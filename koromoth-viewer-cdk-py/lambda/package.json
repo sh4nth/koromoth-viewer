@@ -1,0 +1,14 @@
+{
+  "name": "koromoth-viewer-lambda",
+  "version": "0.0.1",
+  "description": "Lambda function to serve images from S3 via presigned URLs",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.x",
+    "@aws-sdk/s3-request-presigner": "^3.x"
+  }
+}
