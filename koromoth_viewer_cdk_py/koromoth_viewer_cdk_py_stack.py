@@ -35,7 +35,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         serve_image_lambda = lambda_.Function(self, "ServeImageLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="index.handler",
+            handler="get-image.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string, # Pass the parameter value to Lambda env
