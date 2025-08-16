@@ -48,6 +48,19 @@ class KoromothViewerCdkPyStack(Stack):
         # CDK automatically creates an IAM policy that allows read access to this specific bucket.
         images_bucket.grant_read(serve_image_lambda)
 
+        # 3b. Create Lambda Function to List Images
+        list_images_lambda = lambda_.Function(self, "ListImagesLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="list-images.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "BUCKET_NAME": existing_bucket_name_param.value_as_string,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        images_bucket.grant_read(list_images_lambda)
+
         # 4. Create API Gateway
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
@@ -61,6 +74,9 @@ class KoromothViewerCdkPyStack(Stack):
 
         image_resource = api.root.add_resource("image")
         image_resource.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
+
+        images_resource = api.root.add_resource("images")
+        images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
 
         # Output the API Gateway URL for easy access
         CfnOutput(self, "ApiGatewayUrl",
