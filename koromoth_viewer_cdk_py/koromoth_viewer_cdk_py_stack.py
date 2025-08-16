@@ -4,6 +4,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_lambda as lambda_,
     aws_apigateway as apigw,
+    aws_dynamodb as dynamodb,
     CfnOutput,
     CfnParameter, # <-- New Import
     Duration,
@@ -28,6 +29,19 @@ class KoromothViewerCdkPyStack(Stack):
             self,
             "ExistingImagesBucket",
             bucket_name=existing_bucket_name_param.value_as_string # Use the parameter value
+        )
+
+        # Define the ImageTagsTable
+        image_tags_table = dynamodb.Table(self, "ImageTagsTable",
+            partition_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+        )
+
+        # Define the TagImagesTable (Inverted Index)
+        tag_images_table = dynamodb.Table(self, "TagImagesTable",
+            partition_key=dynamodb.Attribute(name="Tag", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
 
         # 3. Create Lambda Function
@@ -93,4 +107,14 @@ class KoromothViewerCdkPyStack(Stack):
         CfnOutput(self, "UsedS3BucketName",
             value=existing_bucket_name_param.value_as_string,
             description="The name of the S3 bucket used for image storage.",
+        )
+
+        # Output the DynamoDB table names
+        CfnOutput(self, "ImageTagsTableName",
+            value=image_tags_table.table_name,
+            description="The name of the DynamoDB table that stores image tags.",
+        )
+        CfnOutput(self, "TagImagesTableName",
+            value=tag_images_table.table_name,
+            description="The name of the DynamoDB table that serves as the inverted index for tags.",
         )
