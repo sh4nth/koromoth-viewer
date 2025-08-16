@@ -9,7 +9,7 @@ export const handler = async (event) => {
     try {
         console.log("Received event:", JSON.stringify(event, null, 2));
 
-        const imageKey = event.queryStringParameters?.key;
+        const imageKey = event.pathParameters?.key;
 
         if (!imageKey) {
             return {
@@ -20,7 +20,7 @@ export const handler = async (event) => {
                     'Access-Control-Allow-Headers': 'Content-Type',
                     'Access-Control-Allow-Methods': 'GET'
                 },
-                body: JSON.stringify({ message: 'Missing image key in query parameters. Use ?key=filename.jpg' }),
+                body: JSON.stringify({ message: 'Missing image key in path. Use /image/filename.jpg' }),
             };
         }
 
