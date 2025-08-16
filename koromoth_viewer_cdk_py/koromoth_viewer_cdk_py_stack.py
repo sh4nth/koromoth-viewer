@@ -90,6 +90,19 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags_table.grant_write_data(add_tags_lambda)
         tag_images_table.grant_write_data(add_tags_lambda)
 
+        # Create Lambda Function to Get Tags
+        get_tags_lambda = lambda_.Function(self, "GetTagsLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="get-tags.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        image_tags_table.grant_read_data(get_tags_lambda)
+
         # 4. Create API Gateway
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
@@ -107,6 +120,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         tags_resource = image_key_resource.add_resource("tags")
         tags_resource.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
+        tags_resource.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
 
         images_resource = api.root.add_resource("images")
         images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
