@@ -75,6 +75,47 @@ class KoromothViewerCdkPyStack(Stack):
         )
         images_bucket.grant_read(list_images_lambda)
 
+        # Create Lambda Function to Add Tags
+        add_tags_lambda = lambda_.Function(self, "AddTagsLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="add-tags.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        image_tags_table.grant_write_data(add_tags_lambda)
+        tag_images_table.grant_write_data(add_tags_lambda)
+
+        # Create Lambda Function to Get Tags
+        get_tags_lambda = lambda_.Function(self, "GetTagsLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="get-tags.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        image_tags_table.grant_read_data(get_tags_lambda)
+
+        # Create Lambda Function to Get Images by Tag
+        get_images_by_tag_lambda = lambda_.Function(self, "GetImagesByTagLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="get-images-by-tag.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        tag_images_table.grant_read_data(get_images_by_tag_lambda)
+
         # 4. Create API Gateway
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
@@ -90,8 +131,18 @@ class KoromothViewerCdkPyStack(Stack):
         image_key_resource = image_resource.add_resource("{key}")
         image_key_resource.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
 
+        tags_resource = image_key_resource.add_resource("tags")
+        tags_resource.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
+        tags_resource.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
+
         images_resource = api.root.add_resource("images")
         images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
+
+        # New endpoint for getting images by tag
+        tags_root_resource = api.root.add_resource("tags")
+        tag_resource = tags_root_resource.add_resource("{tag}")
+        tag_images_resource = tag_resource.add_resource("images")
+        tag_images_resource.add_method("GET", apigw.LambdaIntegration(get_images_by_tag_lambda))
 
         # Output the API Gateway URL for easy access
         CfnOutput(self, "GetImageEndpoint",
