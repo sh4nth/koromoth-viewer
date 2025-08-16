@@ -53,6 +53,7 @@ The architecture of the Koromoth Viewer backend is simple and serverless, consis
 The API Gateway provides a public HTTP endpoint that clients can use to request image URLs. It is configured with CORS (Cross-Origin Resource Sharing) to allow requests from any origin. The following endpoints are available:
 
 *   `GET /image?key=<FILENAME>`: Retrieves a pre-signed URL for a specific image.
+*   `GET /images`: Retrieves a list of all available image keys in the bucket.
 
 ### Lambda Function
 

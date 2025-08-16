@@ -79,9 +79,13 @@ class KoromothViewerCdkPyStack(Stack):
         images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
 
         # Output the API Gateway URL for easy access
-        CfnOutput(self, "ApiGatewayUrl",
+        CfnOutput(self, "GetImageEndpoint",
             value=f"{api.url}image?key=<YOUR_IMAGE_FILENAME.EXT>",
             description="The API Gateway endpoint URL to get presigned image URLs. Replace <YOUR_IMAGE_FILENAME.EXT> with your S3 image key.",
+        )
+        CfnOutput(self, "ListImagesEndpoint",
+            value=f"{api.url}images",
+            description="The API Gateway endpoint URL to list all available images.",
         )
 
         # Output the bucket name that was used
