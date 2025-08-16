@@ -35,7 +35,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         serve_image_lambda = lambda_.Function(self, "ServeImageLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="index.handler",
+            handler="get-image.handler",
             code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string, # Pass the parameter value to Lambda env
@@ -47,6 +47,19 @@ class KoromothViewerCdkPyStack(Stack):
         # Grant Lambda read permissions to the existing S3 bucket
         # CDK automatically creates an IAM policy that allows read access to this specific bucket.
         images_bucket.grant_read(serve_image_lambda)
+
+        # 3b. Create Lambda Function to List Images
+        list_images_lambda = lambda_.Function(self, "ListImagesLambda",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            handler="list-images.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
+            environment={
+                "BUCKET_NAME": existing_bucket_name_param.value_as_string,
+            },
+            memory_size=128,
+            timeout=Duration.seconds(30),
+        )
+        images_bucket.grant_read(list_images_lambda)
 
         # 4. Create API Gateway
         api = apigw.RestApi(self, "KoromothViewerApi",
@@ -62,10 +75,17 @@ class KoromothViewerCdkPyStack(Stack):
         image_resource = api.root.add_resource("image")
         image_resource.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
 
+        images_resource = api.root.add_resource("images")
+        images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
+
         # Output the API Gateway URL for easy access
-        CfnOutput(self, "ApiGatewayUrl",
+        CfnOutput(self, "GetImageEndpoint",
             value=f"{api.url}image?key=<YOUR_IMAGE_FILENAME.EXT>",
             description="The API Gateway endpoint URL to get presigned image URLs. Replace <YOUR_IMAGE_FILENAME.EXT> with your S3 image key.",
+        )
+        CfnOutput(self, "ListImagesEndpoint",
+            value=f"{api.url}images",
+            description="The API Gateway endpoint URL to list all available images.",
         )
 
         # Output the bucket name that was used
