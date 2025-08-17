@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Install Lambda dependencies
+        working-directory: ./lambda
+        run: npm ci
+      - name: Build UI assets
+        working-directory: ./ui
+        run: |
+          npm ci
+          npm run build
+      - name: Run Python tests
+        run: |
+          source .venv/bin/activate
+          pytest
+
+  test-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: ./lambda
+        run: npm ci
+      - name: Run TypeScript tests
+        working-directory: ./lambda
+        run: npm test

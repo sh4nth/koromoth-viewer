@@ -2,10 +2,11 @@
   "name": "koromoth-viewer-lambda",
   "version": "0.1.1",
   "description": "Lambda functions for the Koromoth Viewer",
-  "main": "get-image.js",
+  "main": "dist/get-image.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "node --loader ts-node/esm node_modules/jasmine/bin/jasmine.js --config=jasmine.json"
   },
   "author": "",
   "license": "ISC",
@@ -14,5 +15,16 @@
     "@aws-sdk/client-s3": "^3.596.0",
     "@aws-sdk/lib-dynamodb": "^3.598.0",
     "@aws-sdk/s3-request-presigner": "^3.596.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/util-dynamodb": "^3.598.0",
+    "@types/aws-lambda": "^8.10.138",
+    "@types/jasmine": "^5.1.4",
+    "@types/node": "^20.14.2",
+    "aws-sdk-client-mock": "^4.0.0",
+    "esbuild": "^0.25.9",
+    "jasmine": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }

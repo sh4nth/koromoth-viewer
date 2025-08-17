@@ -2,12 +2,17 @@ import os
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
+    aws_s3_deployment as s3_deployment,
+    aws_cloudfront as cloudfront,
+    aws_cloudfront_origins as origins,
+    aws_lambda_nodejs as nodejs,
     aws_lambda as lambda_,
     aws_apigateway as apigw,
     aws_dynamodb as dynamodb,
     CfnOutput,
-    CfnParameter, # <-- New Import
+    CfnParameter,
     Duration,
+    RemovalPolicy,
 )
 from constructs import Construct
 
@@ -16,151 +21,150 @@ class KoromothViewerCdkPyStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 1. Define a CfnParameter for the existing S3 Bucket Name
-        # This allows you to pass the bucket name during deployment
+        # --- Backend Resources ---
+
         existing_bucket_name_param = CfnParameter(self, "ExistingBucketName",
             type="String",
             description="The name of the existing S3 bucket where images are stored.",
         )
 
-        # 2. Reference the existing S3 Bucket
-        # We use from_bucket_name to reference a bucket that already exists
         images_bucket = s3.Bucket.from_bucket_name(
             self,
             "ExistingImagesBucket",
-            bucket_name=existing_bucket_name_param.value_as_string # Use the parameter value
+            bucket_name=existing_bucket_name_param.value_as_string
         )
 
-        # Define the ImageTagsTable
         image_tags_table = dynamodb.Table(self, "ImageTagsTable",
             partition_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Define the TagImagesTable (Inverted Index)
         tag_images_table = dynamodb.Table(self, "TagImagesTable",
             partition_key=dynamodb.Attribute(name="Tag", type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # 3. Create Lambda Function
-        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda")
+        common_nodejs_props = {
+            "handler": "handler",
+            "runtime": lambda_.Runtime.NODEJS_20_X,
+            "bundling": nodejs.BundlingOptions(
+                force_docker_bundling=False
+            ),
+            "deps_lock_file_path": "lambda/package-lock.json",
+            "memory_size": 128,
+            "timeout": Duration.seconds(30),
+        }
 
-        serve_image_lambda = lambda_.Function(self, "ServeImageLambda",
-            runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-image.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
-            environment={
-                "BUCKET_NAME": existing_bucket_name_param.value_as_string, # Pass the parameter value to Lambda env
-            },
-            memory_size=128,
-            timeout=Duration.seconds(30),
+        serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
+            entry="lambda/get-image.ts",
+            environment={ "BUCKET_NAME": existing_bucket_name_param.value_as_string },
+            **common_nodejs_props
         )
-
-        # Grant Lambda read permissions to the existing S3 bucket
-        # CDK automatically creates an IAM policy that allows read access to this specific bucket.
         images_bucket.grant_read(serve_image_lambda)
 
-        # 3b. Create Lambda Function to List Images
-        list_images_lambda = lambda_.Function(self, "ListImagesLambda",
-            runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="list-images.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
+        get_images_lambda = nodejs.NodejsFunction(self, "GetImagesLambda",
+            entry="lambda/get-images.ts",
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
-            memory_size=128,
-            timeout=Duration.seconds(30),
+            **common_nodejs_props
         )
-        images_bucket.grant_read(list_images_lambda)
+        images_bucket.grant_read(get_images_lambda)
+        tag_images_table.grant_read_data(get_images_lambda)
 
-        # Create Lambda Function to Add Tags
-        add_tags_lambda = lambda_.Function(self, "AddTagsLambda",
-            runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="add-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
+        add_tags_lambda = nodejs.NodejsFunction(self, "AddTagsLambda",
+            entry="lambda/add-tags.ts",
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
-            memory_size=128,
-            timeout=Duration.seconds(30),
+            **common_nodejs_props
         )
         image_tags_table.grant_write_data(add_tags_lambda)
         tag_images_table.grant_write_data(add_tags_lambda)
 
-        # Create Lambda Function to Get Tags
-        get_tags_lambda = lambda_.Function(self, "GetTagsLambda",
-            runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
-            environment={
-                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
-            },
-            memory_size=128,
-            timeout=Duration.seconds(30),
+        get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
+            entry="lambda/get-tags.ts",
+            environment={ "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name },
+            **common_nodejs_props
         )
         image_tags_table.grant_read_data(get_tags_lambda)
 
-        # Create Lambda Function to Get Images by Tag
-        get_images_by_tag_lambda = lambda_.Function(self, "GetImagesByTagLambda",
-            runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-images-by-tag.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
-            environment={
-                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
-            },
-            memory_size=128,
-            timeout=Duration.seconds(30),
-        )
-        tag_images_table.grant_read_data(get_images_by_tag_lambda)
-
-        # 4. Create API Gateway
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
             description="Serves presigned URLs for images from S3",
-            default_cors_preflight_options=apigw.CorsOptions(
-                allow_origins=apigw.Cors.ALL_ORIGINS,
-                allow_methods=apigw.Cors.ALL_METHODS,
-                allow_headers=["Content-Type"],
+        )
+
+        # --- API Gateway Resources ---
+        api_root = api.root.add_resource("api")
+
+        # /api/images
+        images = api_root.add_resource("images")
+        images.add_method("GET", apigw.LambdaIntegration(get_images_lambda))
+
+        # /api/image/{key}
+        image_key = api_root.add_resource("image").add_resource("{key}")
+        image_key.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
+
+        # /api/image/{key}/tags
+        image_tags = image_key.add_resource("tags")
+        image_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
+        image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
+
+        # --- Frontend Hosting Resources ---
+
+        # S3 bucket to store the built UI assets
+        ui_bucket = s3.Bucket(self, "UiBucket",
+            bucket_name=f"koromoth-viewer-ui-bucket-{self.account}-{self.region}",
+            public_read_access=False,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+        )
+
+        # CloudFront distribution to serve the UI and proxy API calls
+        distribution = cloudfront.Distribution(self, "CloudFrontDistribution",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3Origin(ui_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             ),
+            default_root_object="index.html",
+            error_responses=[
+                cloudfront.ErrorResponse(
+                    http_status=404,
+                    response_http_status=200,
+                    response_page_path="/index.html",
+                )
+            ]
         )
 
-        image_resource = api.root.add_resource("image")
-        image_key_resource = image_resource.add_resource("{key}")
-        image_key_resource.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
-
-        tags_resource = image_key_resource.add_resource("tags")
-        tags_resource.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
-        tags_resource.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
-
-        images_resource = api.root.add_resource("images")
-        images_resource.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
-
-        # New endpoint for getting images by tag
-        tags_root_resource = api.root.add_resource("tags")
-        tag_resource = tags_root_resource.add_resource("{tag}")
-        tag_images_resource = tag_resource.add_resource("images")
-        tag_images_resource.add_method("GET", apigw.LambdaIntegration(get_images_by_tag_lambda))
-
-        # Output the API Gateway URL for easy access
-        CfnOutput(self, "GetImageEndpoint",
-            value=f"{api.url}image/<YOUR_IMAGE_FILENAME.EXT>",
-            description="The API Gateway endpoint URL to get presigned image URLs. Replace <YOUR_IMAGE_FILENAME.EXT> with your S3 image key.",
+        # Add a new behavior for the API Gateway
+        api_origin = origins.HttpOrigin(f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
+            origin_path=f"/{api.deployment_stage.stage_name}"
         )
-        CfnOutput(self, "ListImagesEndpoint",
-            value=f"{api.url}images",
-            description="The API Gateway endpoint URL to list all available images.",
+        distribution.add_behavior("/api/*", api_origin)
+
+        # Deploy the UI assets to the S3 bucket
+        s3_deployment.BucketDeployment(self, "DeployUi",
+            sources=[s3_deployment.Source.asset(os.path.join(os.path.dirname(__file__), "..", "ui", "dist"))],
+            destination_bucket=ui_bucket,
+            distribution=distribution,
+            distribution_paths=["/*"],
         )
 
-        # Output the bucket name that was used
-        CfnOutput(self, "UsedS3BucketName",
-            value=existing_bucket_name_param.value_as_string,
-            description="The name of the S3 bucket used for image storage.",
+        # --- CDK Outputs ---
+        CfnOutput(self, "CloudFrontUrl",
+            value=f"https://{distribution.distribution_domain_name}",
+            description="The URL for the CloudFront distribution.",
         )
-
-        # Output the DynamoDB table names
+        CfnOutput(self, "UiBucketName",
+            value=ui_bucket.bucket_name,
+            description="The name of the S3 bucket for the UI assets.",
+        )
         CfnOutput(self, "ImageTagsTableName",
             value=image_tags_table.table_name,
             description="The name of the DynamoDB table that stores image tags.",
