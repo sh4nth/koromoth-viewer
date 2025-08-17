@@ -42,7 +42,6 @@ class KoromothViewerCdkPyStack(Stack):
         common_nodejs_props = {
             "handler": "handler",
             "runtime": lambda_.Runtime.NODEJS_20_X,
-            "deps_lock_file_path": "../lambda/package-lock.json",
             "bundling": nodejs.BundlingOptions(
                 force_docker_bundling=False
             ),
@@ -51,7 +50,7 @@ class KoromothViewerCdkPyStack(Stack):
         }
 
         serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
-            entry="../lambda/get-image.ts",
+            entry="lambda/get-image.ts",
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
             },
@@ -59,17 +58,19 @@ class KoromothViewerCdkPyStack(Stack):
         )
         images_bucket.grant_read(serve_image_lambda)
 
-        list_images_lambda = nodejs.NodejsFunction(self, "ListImagesLambda",
-            entry="../lambda/list-images.ts",
+        get_images_lambda = nodejs.NodejsFunction(self, "GetImagesLambda",
+            entry="lambda/get-images.ts",
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
             **common_nodejs_props
         )
-        images_bucket.grant_read(list_images_lambda)
+        images_bucket.grant_read(get_images_lambda)
+        tag_images_table.grant_read_data(get_images_lambda)
 
         add_tags_lambda = nodejs.NodejsFunction(self, "AddTagsLambda",
-            entry="../lambda/add-tags.ts",
+            entry="lambda/add-tags.ts",
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
@@ -80,22 +81,13 @@ class KoromothViewerCdkPyStack(Stack):
         tag_images_table.grant_write_data(add_tags_lambda)
 
         get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
-            entry="../lambda/get-tags.ts",
+            entry="lambda/get-tags.ts",
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
             },
             **common_nodejs_props
         )
         image_tags_table.grant_read_data(get_tags_lambda)
-
-        get_images_by_tag_lambda = nodejs.NodejsFunction(self, "GetImagesByTagLambda",
-            entry="../lambda/get-images-by-tag.ts",
-            environment={
-                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
-            },
-            **common_nodejs_props
-        )
-        tag_images_table.grant_read_data(get_images_by_tag_lambda)
 
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
@@ -109,24 +101,26 @@ class KoromothViewerCdkPyStack(Stack):
 
         # --- API Gateway Resources ---
 
-        # GET /images
+        # /images
         images = api.root.add_resource("images")
-        images.add_method("GET", apigw.LambdaIntegration(list_images_lambda))
+        
+        # GET /images[?tag={tag1}&tag={tag2}] (lists all images with all specified tags, if no tags provided, lists all images)
+        images.add_method("GET", apigw.LambdaIntegration(get_images_lambda))
 
-        # GET /image/{key}
+        # /image/{key}
         image_key = api.root.add_resource("image").add_resource("{key}")
+        
+        # GET /image/{key}
         image_key.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
 
+        # /image/{key}/tags
+        image_tags = image_key.add_resource("tags")
+        
         # GET /image/{key}/tags
-        image_key_tags = image_key.add_resource("tags")
-        image_key_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
+        image_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
         
         # POST /image/{key}/tags
-        image_key_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
-
-        # GET /tags/{tag}/images
-        tags_tag_images = api.root.add_resource("tags").add_resource("{tag}").add_resource("images")
-        tags_tag_images.add_method("GET", apigw.LambdaIntegration(get_images_by_tag_lambda))
+        image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
 
         # --- CDK Outputs ---
         CfnOutput(self, "UsedS3BucketName",
