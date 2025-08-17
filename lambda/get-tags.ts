@@ -25,7 +25,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
         const { Item } = await ddbDocClient.send(getTagsCommand);
 
-        const tags = Item?.Tags?.values ?? [];
+        const tags = Item?.Tags ? Array.from(Item.Tags) : [];
 
         return {
             statusCode: 200,
@@ -35,7 +35,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             },
             body: JSON.stringify({
                 imageKey: imageKey,
-                tags: [...tags],
+                tags: tags,
             }),
         };
     } catch (error) {
