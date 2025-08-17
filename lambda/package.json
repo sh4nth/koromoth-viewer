@@ -24,6 +24,7 @@
     "aws-sdk-client-mock": "^4.0.0",
     "esbuild": "^0.25.9",
     "jasmine": "^5.1.0",
+    "sharp": "^0.33.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

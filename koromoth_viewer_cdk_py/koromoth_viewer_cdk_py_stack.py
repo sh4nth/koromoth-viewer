@@ -1,8 +1,8 @@
-import os
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
     aws_s3_deployment as s3_deployment,
+    aws_s3_notifications as s3n,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_lambda_nodejs as nodejs,
@@ -21,17 +21,21 @@ class KoromothViewerCdkPyStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # --- Backend Resources ---
-
+        # --- CDK Parameters ---
         existing_bucket_name_param = CfnParameter(self, "ExistingBucketName",
             type="String",
             description="The name of the existing S3 bucket where images are stored.",
         )
 
+        # --- Backend Resources ---
         images_bucket = s3.Bucket.from_bucket_name(
-            self,
-            "ExistingImagesBucket",
-            bucket_name=existing_bucket_name_param.value_as_string
+            self, "ExistingImagesBucket", bucket_name=existing_bucket_name_param.value_as_string
+        )
+
+        thumbnail_bucket = s3.Bucket(self, "ThumbnailBucket",
+            public_read_access=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
         )
 
         image_tags_table = dynamodb.Table(self, "ImageTagsTable",
@@ -50,17 +54,32 @@ class KoromothViewerCdkPyStack(Stack):
         common_nodejs_props = {
             "handler": "handler",
             "runtime": lambda_.Runtime.NODEJS_20_X,
-            "bundling": nodejs.BundlingOptions(
-                force_docker_bundling=False
-            ),
+            "bundling": nodejs.BundlingOptions(force_docker_bundling=False),
             "deps_lock_file_path": "lambda/package-lock.json",
             "memory_size": 128,
             "timeout": Duration.seconds(30),
         }
 
+        # --- Lambda Functions ---
+        thumbnailer_lambda = nodejs.NodejsFunction(self, "ThumbnailerLambda",
+            entry="lambda/thumbnailer.ts",
+            environment={
+                "THUMBNAIL_BUCKET_NAME": thumbnail_bucket.bucket_name,
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+            },
+            **common_nodejs_props
+        )
+        images_bucket.grant_read(thumbnailer_lambda)
+        thumbnail_bucket.grant_write(thumbnailer_lambda)
+        image_tags_table.grant_write_data(thumbnailer_lambda)
+        images_bucket.add_event_notification(
+            s3.EventType.OBJECT_CREATED,
+            s3n.LambdaDestination(thumbnailer_lambda)
+        )
+
         serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
             entry="lambda/get-image.ts",
-            environment={ "BUCKET_NAME": existing_bucket_name_param.value_as_string },
+            environment={"BUCKET_NAME": existing_bucket_name_param.value_as_string},
             **common_nodejs_props
         )
         images_bucket.grant_read(serve_image_lambda)
@@ -68,13 +87,11 @@ class KoromothViewerCdkPyStack(Stack):
         get_images_lambda = nodejs.NodejsFunction(self, "GetImagesLambda",
             entry="lambda/get-images.ts",
             environment={
-                "BUCKET_NAME": existing_bucket_name_param.value_as_string,
-                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
             },
             **common_nodejs_props
         )
-        images_bucket.grant_read(get_images_lambda)
-        tag_images_table.grant_read_data(get_images_lambda)
+        image_tags_table.grant_read_data(get_images_lambda)
 
         add_tags_lambda = nodejs.NodejsFunction(self, "AddTagsLambda",
             entry="lambda/add-tags.ts",
@@ -89,7 +106,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
             entry="lambda/get-tags.ts",
-            environment={ "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name },
+            environment={"IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name},
             **common_nodejs_props
         )
         image_tags_table.grant_read_data(get_tags_lambda)
@@ -117,7 +134,6 @@ class KoromothViewerCdkPyStack(Stack):
 
         # --- Frontend Hosting Resources ---
         no_ui_str = self.node.try_get_context("NoUi")
-        print(f'No UI strr = {no_ui_str}')
         if no_ui_str != 'true':
              # S3 bucket to store the built UI assets
              ui_bucket = s3.Bucket(self, "UiBucket",
@@ -167,6 +183,10 @@ class KoromothViewerCdkPyStack(Stack):
                  value=ui_bucket.bucket_name,
                  description="The name of the S3 bucket for the UI assets.",
              )
+        CfnOutput(self, "ThumbnailBucketName",
+            value=thumbnail_bucket.bucket_name,
+            description="The name of the S3 bucket for the thumbnails.",
+        )
         CfnOutput(self, "ImageTagsTableName",
             value=image_tags_table.table_name,
             description="The name of the DynamoDB table that stores image tags.",
