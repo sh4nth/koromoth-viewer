@@ -2,6 +2,7 @@ import os
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
+    aws_lambda_nodejs as nodejs,
     aws_lambda as lambda_,
     aws_apigateway as apigw,
     aws_dynamodb as dynamodb,
@@ -38,65 +39,80 @@ class KoromothViewerCdkPyStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
 
-        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "dist")
+        lambda_entry_path = os.path.join(os.path.dirname(__file__), "..", "lambda")
 
-        serve_image_lambda = lambda_.Function(self, "ServeImageLambda",
+        serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
+            entry=os.path.join(lambda_entry_path, "get-image.ts"),
+            handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-image.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
             },
+            bundling=nodejs.BundlingOptions(
+                force_docker_bundling=False,
+            ),
             memory_size=128,
             timeout=Duration.seconds(30),
         )
         images_bucket.grant_read(serve_image_lambda)
 
-        list_images_lambda = lambda_.Function(self, "ListImagesLambda",
+        list_images_lambda = nodejs.NodejsFunction(self, "ListImagesLambda",
+            entry=os.path.join(lambda_entry_path, "list-images.ts"),
+            handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="list-images.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
             },
+            bundling=nodejs.BundlingOptions(
+                force_docker_bundling=False,
+            ),
             memory_size=128,
             timeout=Duration.seconds(30),
         )
         images_bucket.grant_read(list_images_lambda)
 
-        add_tags_lambda = lambda_.Function(self, "AddTagsLambda",
+        add_tags_lambda = nodejs.NodejsFunction(self, "AddTagsLambda",
+            entry=os.path.join(lambda_entry_path, "add-tags.ts"),
+            handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="add-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
+            bundling=nodejs.BundlingOptions(
+                force_docker_bundling=False,
+            ),
             memory_size=128,
             timeout=Duration.seconds(30),
         )
         image_tags_table.grant_write_data(add_tags_lambda)
         tag_images_table.grant_write_data(add_tags_lambda)
 
-        get_tags_lambda = lambda_.Function(self, "GetTagsLambda",
+        get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
+            entry=os.path.join(lambda_entry_path, "get-tags.ts"),
+            handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
             },
+            bundling=nodejs.BundlingOptions(
+                force_docker_bundling=False,
+            ),
             memory_size=128,
             timeout=Duration.seconds(30),
         )
         image_tags_table.grant_read_data(get_tags_lambda)
 
-        get_images_by_tag_lambda = lambda_.Function(self, "GetImagesByTagLambda",
+        get_images_by_tag_lambda = nodejs.NodejsFunction(self, "GetImagesByTagLambda",
+            entry=os.path.join(lambda_entry_path, "get-images-by-tag.ts"),
+            handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="get-images-by-tag.handler",
-            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
+            bundling=nodejs.BundlingOptions(
+                force_docker_bundling=False,
+            ),
             memory_size=128,
             timeout=Duration.seconds(30),
         )
