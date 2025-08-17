@@ -42,6 +42,7 @@ class KoromothViewerCdkPyStack(Stack):
         lambda_entry_path = os.path.join(os.path.dirname(__file__), "..", "lambda")
 
         serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
+            project_root=lambda_entry_path,
             entry=os.path.join(lambda_entry_path, "get-image.ts"),
             handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
@@ -57,6 +58,7 @@ class KoromothViewerCdkPyStack(Stack):
         images_bucket.grant_read(serve_image_lambda)
 
         list_images_lambda = nodejs.NodejsFunction(self, "ListImagesLambda",
+            project_root=lambda_entry_path,
             entry=os.path.join(lambda_entry_path, "list-images.ts"),
             handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
@@ -72,6 +74,7 @@ class KoromothViewerCdkPyStack(Stack):
         images_bucket.grant_read(list_images_lambda)
 
         add_tags_lambda = nodejs.NodejsFunction(self, "AddTagsLambda",
+            project_root=lambda_entry_path,
             entry=os.path.join(lambda_entry_path, "add-tags.ts"),
             handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
@@ -89,6 +92,7 @@ class KoromothViewerCdkPyStack(Stack):
         tag_images_table.grant_write_data(add_tags_lambda)
 
         get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
+            project_root=lambda_entry_path,
             entry=os.path.join(lambda_entry_path, "get-tags.ts"),
             handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
@@ -104,6 +108,7 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags_table.grant_read_data(get_tags_lambda)
 
         get_images_by_tag_lambda = nodejs.NodejsFunction(self, "GetImagesByTagLambda",
+            project_root=lambda_entry_path,
             entry=os.path.join(lambda_entry_path, "get-images-by-tag.ts"),
             handler="handler",
             runtime=lambda_.Runtime.NODEJS_20_X,
