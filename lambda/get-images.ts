@@ -2,6 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { ApiResponse } from './utils/response.js';
 
 const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const s3Client = new S3Client({});
@@ -11,8 +12,6 @@ const BUCKET_NAME = process.env.BUCKET_NAME;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
-        console.log("Received event:", JSON.stringify(event, null, 2));
-
         const tags = event.multiValueQueryStringParameters?.tag;
 
         if (tags) {
@@ -21,16 +20,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             return listAllImages();
         }
     } catch (error) {
-        console.error("Error in images handler:", error);
-        const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred';
-        return {
-            statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            body: JSON.stringify({ message: 'Failed to process request.', error: errorMessage }),
-        };
+        return ApiResponse.serverError(error);
     }
 };
 
@@ -39,9 +29,7 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
         const queryCommand = new QueryCommand({
             TableName: TAG_IMAGES_TABLE_NAME,
             KeyConditionExpression: "Tag = :t",
-            ExpressionAttributeValues: {
-                ":t": tag,
-            },
+            ExpressionAttributeValues: { ":t": tag },
         });
         return ddbDocClient.send(queryCommand);
     });
@@ -56,17 +44,10 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
         return new Set([...acc].filter(imageKey => currentSet.has(imageKey)));
     });
 
-    return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-            tags: tags,
-            imageKeys: [...intersection],
-        }),
-    };
+    return ApiResponse.success({
+        tags: tags,
+        imageKeys: [...intersection],
+    });
 };
 
 const listAllImages = async (): Promise<APIGatewayProxyResult> => {
@@ -77,15 +58,8 @@ const listAllImages = async (): Promise<APIGatewayProxyResult> => {
     const { Contents } = await s3Client.send(command);
     const imageKeys = Contents ? Contents.map(c => c.Key) : [];
 
-    return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-            images: imageKeys,
-            message: `Successfully retrieved ${imageKeys.length} images.`,
-        }),
-    };
+    return ApiResponse.success({
+        images: imageKeys,
+        message: `Successfully retrieved ${imageKeys.length} images.`,
+    });
 };
