@@ -67,13 +67,27 @@ class KoromothViewerCdkPyStack(Stack):
         }
 
         # --- Lambda Functions ---
+        sharp_layer = lambda_.LayerVersion(self, "SharpLayer",
+            code=lambda_.Code.from_asset("lambda/sharp_layer"),
+            compatible_architectures=[lambda_.Architecture.X86_64],
+            compatible_runtimes=[lambda_.Runtime.NODEJS_20_X],
+            description="Layer containing sharp for Linux x86_64"
+        )
         thumbnailer_lambda = nodejs.NodejsFunction(self, "ThumbnailerLambda",
             entry="lambda/thumbnailer.ts",
             environment={
                 "THUMBNAIL_BUCKET_NAME": thumbnail_bucket.bucket_name,
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
             },
-            **common_nodejs_props
+            handler="handler",
+            runtime=lambda_.Runtime.NODEJS_20_X,
+            deps_lock_file_path="lambda/package-lock.json",
+            memory_size=1024, # Sharp is memory intensive
+            timeout=Duration.seconds(90),
+            architecture=lambda_.Architecture.X86_64,
+            layers=[sharp_layer],
+            # `sharp` for x86_64 so we can deploy from any cross-platform source
+            bundling=nodejs.BundlingOptions(external_modules=['sharp']),
         )
         images_bucket.grant_read(thumbnailer_lambda)
         thumbnail_bucket.grant_write(thumbnailer_lambda)

@@ -37,6 +37,13 @@ This project consists of a serverless backend and a React single-page applicatio
     cd lambda
     npm install
     ```
+    **Install linux binary for sharp**
+    ```
+    mkdir sharp_layer
+    cd sharp_layer
+    npm init -y
+    npm install --cpu=x64 --os=linux sharp
+    ```
 4.  **Install Frontend Dependencies** (for the UI):
     ```bash
     cd ../ui
