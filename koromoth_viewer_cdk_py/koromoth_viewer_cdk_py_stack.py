@@ -8,7 +8,6 @@ from aws_cdk import (
     CfnOutput,
     CfnParameter,
     Duration,
-    aws_cdk as cdk
 )
 from constructs import Construct
 
@@ -39,20 +38,12 @@ class KoromothViewerCdkPyStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
 
-        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda")
-        
-        bundling_options = cdk.BundlingOptions(
-            image=lambda_.Runtime.NODEJS_20_X.bundling_image,
-            command=[
-                "bash", "-c",
-                "npm install && npm run build && cp -r node_modules/ dist/"
-            ],
-        )
+        lambda_code_path = os.path.join(os.path.dirname(__file__), "..", "lambda", "dist")
 
         serve_image_lambda = lambda_.Function(self, "ServeImageLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="dist/get-image.handler",
-            code=lambda_.Code.from_asset(lambda_code_path, bundling=bundling_options),
+            handler="get-image.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
             },
@@ -63,8 +54,8 @@ class KoromothViewerCdkPyStack(Stack):
 
         list_images_lambda = lambda_.Function(self, "ListImagesLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="dist/list-images.handler",
-            code=lambda_.Code.from_asset(lambda_code_path, bundling=bundling_options),
+            handler="list-images.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "BUCKET_NAME": existing_bucket_name_param.value_as_string,
             },
@@ -75,8 +66,8 @@ class KoromothViewerCdkPyStack(Stack):
 
         add_tags_lambda = lambda_.Function(self, "AddTagsLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="dist/add-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path, bundling=bundling_options),
+            handler="add-tags.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
@@ -89,8 +80,8 @@ class KoromothViewerCdkPyStack(Stack):
 
         get_tags_lambda = lambda_.Function(self, "GetTagsLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="dist/get-tags.handler",
-            code=lambda_.Code.from_asset(lambda_code_path, bundling=bundling_options),
+            handler="get-tags.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
             },
@@ -101,8 +92,8 @@ class KoromothViewerCdkPyStack(Stack):
 
         get_images_by_tag_lambda = lambda_.Function(self, "GetImagesByTagLambda",
             runtime=lambda_.Runtime.NODEJS_20_X,
-            handler="dist/get-images-by-tag.handler",
-            code=lambda_.Code.from_asset(lambda_code_path, bundling=bundling_options),
+            handler="get-images-by-tag.handler",
+            code=lambda_.Code.from_asset(lambda_code_path),
             environment={
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
