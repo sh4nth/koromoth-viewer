@@ -99,12 +99,18 @@ class KoromothViewerCdkPyStack(Stack):
             description="Serves presigned URLs for images from S3",
         )
 
-        images = api.root.add_resource("images")
+        # --- API Gateway Resources ---
+        api_root = api.root.add_resource("api")
+
+        # /api/images
+        images = api_root.add_resource("images")
         images.add_method("GET", apigw.LambdaIntegration(get_images_lambda))
 
-        image_key = api.root.add_resource("image").add_resource("{key}")
+        # /api/image/{key}
+        image_key = api_root.add_resource("image").add_resource("{key}")
         image_key.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
 
+        # /api/image/{key}/tags
         image_tags = image_key.add_resource("tags")
         image_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
         image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
@@ -140,8 +146,7 @@ class KoromothViewerCdkPyStack(Stack):
         api_origin = origins.HttpOrigin(f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
             origin_path=f"/{api.deployment_stage.stage_name}"
         )
-        distribution.add_behavior("/images*", api_origin)
-        distribution.add_behavior("/image*", api_origin)
+        distribution.add_behavior("/api/*", api_origin)
 
         # Deploy the UI assets to the S3 bucket
         s3_deployment.BucketDeployment(self, "DeployUi",
