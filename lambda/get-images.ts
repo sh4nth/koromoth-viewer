@@ -1,10 +1,11 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
-const s3Client = new S3Client({ region: process.env.AWS_REGION });
+const baseDynamoDBClient = new DynamoDBClient({});
+const ddbDocClient = DynamoDBDocumentClient.from(baseDynamoDBClient);
+const s3Client = new S3Client({});
 
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -43,7 +44,7 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
                 ":t": tag,
             },
         });
-        return dynamoDBClient.send(queryCommand);
+        return ddbDocClient.send(queryCommand);
     });
 
     const queryResults = await Promise.all(queryPromises);
