@@ -28,7 +28,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             Key: { ImageKey: imageKey },
             UpdateExpression: "ADD Tags :t",
             ExpressionAttributeValues: {
-                ":t": ddbDocClient.createSet(tags),
+                ":t": new Set(tags),
             },
         });
 
