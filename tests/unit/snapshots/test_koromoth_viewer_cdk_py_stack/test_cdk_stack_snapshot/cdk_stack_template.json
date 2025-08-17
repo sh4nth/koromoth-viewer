@@ -1,0 +1,1619 @@
+{
+    "Outputs": {
+        "AddImageTagsEndpoint": {
+            "Description": "Adds one or more tags to an image.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "POST https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/image/{key}/tags"
+                    ]
+                ]
+            }
+        },
+        "ApiUrl": {
+            "Description": "The base URL for the API Gateway.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/"
+                    ]
+                ]
+            }
+        },
+        "GetImageEndpoint": {
+            "Description": "Gets a presigned URL for an image.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "GET https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/image/{key}"
+                    ]
+                ]
+            }
+        },
+        "GetImageTagsEndpoint": {
+            "Description": "Gets all tags for an image.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "GET https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/image/{key}/tags"
+                    ]
+                ]
+            }
+        },
+        "GetImagesByTagEndpoint": {
+            "Description": "Gets all images for a specific tag.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "GET https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/tags/{tag}/images"
+                    ]
+                ]
+            }
+        },
+        "ImageTagsTableName": {
+            "Description": "The name of the DynamoDB table that stores image tags.",
+            "Value": {
+                "Ref": "ImageTagsTable8974D636"
+            }
+        },
+        "KoromothViewerApiEndpointEF8B63D8": {
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/"
+                    ]
+                ]
+            }
+        },
+        "ListImagesEndpoint": {
+            "Description": "Lists all image keys.",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "GET https://",
+                        {
+                            "Ref": "KoromothViewerApi044C2EBB"
+                        },
+                        ".execute-api.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".",
+                        {
+                            "Ref": "AWS::URLSuffix"
+                        },
+                        "/",
+                        {
+                            "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                        },
+                        "/images"
+                    ]
+                ]
+            }
+        },
+        "TagImagesTableName": {
+            "Description": "The name of the DynamoDB table that serves as the inverted index for tags.",
+            "Value": {
+                "Ref": "TagImagesTableE597638A"
+            }
+        },
+        "UsedS3BucketName": {
+            "Description": "The name of the S3 bucket used for image storage.",
+            "Value": {
+                "Ref": "ExistingBucketName"
+            }
+        }
+    },
+    "Parameters": {
+        "BootstrapVersion": {
+            "Default": "/cdk-bootstrap/hnb659fds/version",
+            "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+            "Type": "AWS::SSM::Parameter::Value<String>"
+        },
+        "ExistingBucketName": {
+            "Description": "The name of the existing S3 bucket where images are stored.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AddTagsLambda16764F03": {
+            "DependsOn": [
+                "AddTagsLambdaServiceRoleDefaultPolicy3816CE40",
+                "AddTagsLambdaServiceRole54604334"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+                    },
+                    "S3Key": "fa2e77307da7de7c2090716a04d04078b3c4e5b96621593923664facddc43aca.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "IMAGE_TAGS_TABLE_NAME": {
+                            "Ref": "ImageTagsTable8974D636"
+                        },
+                        "TAG_IMAGES_TABLE_NAME": {
+                            "Ref": "TagImagesTableE597638A"
+                        }
+                    }
+                },
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AddTagsLambdaServiceRole54604334",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs20.x",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "AddTagsLambdaServiceRole54604334": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "AddTagsLambdaServiceRoleDefaultPolicy3816CE40": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:DescribeTable"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "ImageTagsTable8974D636",
+                                        "Arn"
+                                    ]
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:UpdateItem",
+                                "dynamodb:DeleteItem",
+                                "dynamodb:DescribeTable"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "TagImagesTableE597638A",
+                                        "Arn"
+                                    ]
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "AddTagsLambdaServiceRoleDefaultPolicy3816CE40",
+                "Roles": [
+                    {
+                        "Ref": "AddTagsLambdaServiceRole54604334"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "GetImagesLambdaA876D4CB": {
+            "DependsOn": [
+                "GetImagesLambdaServiceRoleDefaultPolicyC5DDCEAD",
+                "GetImagesLambdaServiceRole5EFCD34B"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+                    },
+                    "S3Key": "1cd8a7f380733b9475052905b405f5ca69a18c5fe79c580b8b570d6dea4a24ec.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "BUCKET_NAME": {
+                            "Ref": "ExistingBucketName"
+                        },
+                        "TAG_IMAGES_TABLE_NAME": {
+                            "Ref": "TagImagesTableE597638A"
+                        }
+                    }
+                },
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "GetImagesLambdaServiceRole5EFCD34B",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs20.x",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "GetImagesLambdaServiceRole5EFCD34B": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "GetImagesLambdaServiceRoleDefaultPolicyC5DDCEAD": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:GetObject*",
+                                "s3:GetBucket*",
+                                "s3:List*"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "ExistingBucketName"
+                                            }
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "ExistingBucketName"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:Query",
+                                "dynamodb:GetItem",
+                                "dynamodb:Scan",
+                                "dynamodb:ConditionCheckItem",
+                                "dynamodb:DescribeTable"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "TagImagesTableE597638A",
+                                        "Arn"
+                                    ]
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "GetImagesLambdaServiceRoleDefaultPolicyC5DDCEAD",
+                "Roles": [
+                    {
+                        "Ref": "GetImagesLambdaServiceRole5EFCD34B"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "GetTagsLambdaC80C7E0D": {
+            "DependsOn": [
+                "GetTagsLambdaServiceRoleDefaultPolicy8086A2D4",
+                "GetTagsLambdaServiceRoleBA0C1A69"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+                    },
+                    "S3Key": "372cae39fe22b4a777b26e133c614d7f66846565c1e24a3a4ed4826c81b6e9fc.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "IMAGE_TAGS_TABLE_NAME": {
+                            "Ref": "ImageTagsTable8974D636"
+                        }
+                    }
+                },
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "GetTagsLambdaServiceRoleBA0C1A69",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs20.x",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "GetTagsLambdaServiceRoleBA0C1A69": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "GetTagsLambdaServiceRoleDefaultPolicy8086A2D4": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:Query",
+                                "dynamodb:GetItem",
+                                "dynamodb:Scan",
+                                "dynamodb:ConditionCheckItem",
+                                "dynamodb:DescribeTable"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "ImageTagsTable8974D636",
+                                        "Arn"
+                                    ]
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "GetTagsLambdaServiceRoleDefaultPolicy8086A2D4",
+                "Roles": [
+                    {
+                        "Ref": "GetTagsLambdaServiceRoleBA0C1A69"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "ImageTagsTable8974D636": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "ImageKey",
+                        "AttributeType": "S"
+                    }
+                ],
+                "BillingMode": "PAY_PER_REQUEST",
+                "KeySchema": [
+                    {
+                        "AttributeName": "ImageKey",
+                        "KeyType": "HASH"
+                    }
+                ]
+            },
+            "Type": "AWS::DynamoDB::Table",
+            "UpdateReplacePolicy": "Retain"
+        },
+        "KoromothViewerApi044C2EBB": {
+            "Properties": {
+                "Description": "Serves presigned URLs for images from S3",
+                "Name": "Koromoth Viewer Backend API"
+            },
+            "Type": "AWS::ApiGateway::RestApi"
+        },
+        "KoromothViewerApiAccountE57A1920": {
+            "DeletionPolicy": "Retain",
+            "DependsOn": [
+                "KoromothViewerApi044C2EBB"
+            ],
+            "Properties": {
+                "CloudWatchRoleArn": {
+                    "Fn::GetAtt": [
+                        "KoromothViewerApiCloudWatchRoleECC28631",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::ApiGateway::Account",
+            "UpdateReplacePolicy": "Retain"
+        },
+        "KoromothViewerApiCloudWatchRoleECC28631": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "apigateway.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role",
+            "UpdateReplacePolicy": "Retain"
+        },
+        "KoromothViewerApiDeployment5307DABD7fdb3e9dbacdefcb575a64974581c9e4": {
+            "DependsOn": [
+                "KoromothViewerApiimagekeyGET27E5F294",
+                "KoromothViewerApiimagekeyOPTIONS98A50713",
+                "KoromothViewerApiimagekey6C1610CA",
+                "KoromothViewerApiimagekeytagsGET0DF46FD7",
+                "KoromothViewerApiimagekeytagsOPTIONSB59F0227",
+                "KoromothViewerApiimagekeytagsPOST63B56B3B",
+                "KoromothViewerApiimagekeytagsCAE11F16",
+                "KoromothViewerApiimageOPTIONSF8E575C3",
+                "KoromothViewerApiimage735D219D",
+                "KoromothViewerApiimagesGET2508B7C0",
+                "KoromothViewerApiimagesOPTIONS06BA2089",
+                "KoromothViewerApiimages249C2670",
+                "KoromothViewerApiOPTIONS82A1D520"
+            ],
+            "Metadata": {
+                "aws:cdk:do-not-refactor": true
+            },
+            "Properties": {
+                "Description": "Serves presigned URLs for images from S3",
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Deployment"
+        },
+        "KoromothViewerApiDeploymentStageprodDD06AF2F": {
+            "DependsOn": [
+                "KoromothViewerApiAccountE57A1920"
+            ],
+            "Properties": {
+                "DeploymentId": {
+                    "Ref": "KoromothViewerApiDeployment5307DABD7fdb3e9dbacdefcb575a64974581c9e4"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                },
+                "StageName": "prod"
+            },
+            "Type": "AWS::ApiGateway::Stage"
+        },
+        "KoromothViewerApiOPTIONS82A1D520": {
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "HttpMethod": "OPTIONS",
+                "Integration": {
+                    "IntegrationResponses": [
+                        {
+                            "ResponseParameters": {
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "StatusCode": "204"
+                        }
+                    ],
+                    "RequestTemplates": {
+                        "application/json": "{ statusCode: 200 }"
+                    },
+                    "Type": "MOCK"
+                },
+                "MethodResponses": [
+                    {
+                        "ResponseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": true,
+                            "method.response.header.Access-Control-Allow-Methods": true,
+                            "method.response.header.Access-Control-Allow-Origin": true
+                        },
+                        "StatusCode": "204"
+                    }
+                ],
+                "ResourceId": {
+                    "Fn::GetAtt": [
+                        "KoromothViewerApi044C2EBB",
+                        "RootResourceId"
+                    ]
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimage735D219D": {
+            "Properties": {
+                "ParentId": {
+                    "Fn::GetAtt": [
+                        "KoromothViewerApi044C2EBB",
+                        "RootResourceId"
+                    ]
+                },
+                "PathPart": "image",
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Resource"
+        },
+        "KoromothViewerApiimageOPTIONSF8E575C3": {
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "HttpMethod": "OPTIONS",
+                "Integration": {
+                    "IntegrationResponses": [
+                        {
+                            "ResponseParameters": {
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "StatusCode": "204"
+                        }
+                    ],
+                    "RequestTemplates": {
+                        "application/json": "{ statusCode: 200 }"
+                    },
+                    "Type": "MOCK"
+                },
+                "MethodResponses": [
+                    {
+                        "ResponseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": true,
+                            "method.response.header.Access-Control-Allow-Methods": true,
+                            "method.response.header.Access-Control-Allow-Origin": true
+                        },
+                        "StatusCode": "204"
+                    }
+                ],
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimage735D219D"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekey6C1610CA": {
+            "Properties": {
+                "ParentId": {
+                    "Ref": "KoromothViewerApiimage735D219D"
+                },
+                "PathPart": "{key}",
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Resource"
+        },
+        "KoromothViewerApiimagekeyGET27E5F294": {
+            "Properties": {
+                "AuthorizationType": "NONE",
+                "HttpMethod": "GET",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":apigateway:",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                ":lambda:path/2015-03-31/functions/",
+                                {
+                                    "Fn::GetAtt": [
+                                        "ServeImageLambda413BEDE8",
+                                        "Arn"
+                                    ]
+                                },
+                                "/invocations"
+                            ]
+                        ]
+                    }
+                },
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimagekey6C1610CA"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekeyGETApiPermissionKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimagekey929937F2": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "ServeImageLambda413BEDE8",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/",
+                            {
+                                "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                            },
+                            "/GET/image/*"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagekeyGETApiPermissionTestKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimagekey57EC2837": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "ServeImageLambda413BEDE8",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/test-invoke-stage/GET/image/*"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagekeyOPTIONS98A50713": {
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "HttpMethod": "OPTIONS",
+                "Integration": {
+                    "IntegrationResponses": [
+                        {
+                            "ResponseParameters": {
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "StatusCode": "204"
+                        }
+                    ],
+                    "RequestTemplates": {
+                        "application/json": "{ statusCode: 200 }"
+                    },
+                    "Type": "MOCK"
+                },
+                "MethodResponses": [
+                    {
+                        "ResponseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": true,
+                            "method.response.header.Access-Control-Allow-Methods": true,
+                            "method.response.header.Access-Control-Allow-Origin": true
+                        },
+                        "StatusCode": "204"
+                    }
+                ],
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimagekey6C1610CA"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekeytagsCAE11F16": {
+            "Properties": {
+                "ParentId": {
+                    "Ref": "KoromothViewerApiimagekey6C1610CA"
+                },
+                "PathPart": "tags",
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Resource"
+        },
+        "KoromothViewerApiimagekeytagsGET0DF46FD7": {
+            "Properties": {
+                "AuthorizationType": "NONE",
+                "HttpMethod": "GET",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":apigateway:",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                ":lambda:path/2015-03-31/functions/",
+                                {
+                                    "Fn::GetAtt": [
+                                        "GetTagsLambdaC80C7E0D",
+                                        "Arn"
+                                    ]
+                                },
+                                "/invocations"
+                            ]
+                        ]
+                    }
+                },
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimagekeytagsCAE11F16"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekeytagsGETApiPermissionKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimagekeytags4696B169": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "GetTagsLambdaC80C7E0D",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/",
+                            {
+                                "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                            },
+                            "/GET/image/*/tags"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagekeytagsGETApiPermissionTestKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimagekeytags752C0F9A": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "GetTagsLambdaC80C7E0D",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/test-invoke-stage/GET/image/*/tags"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagekeytagsOPTIONSB59F0227": {
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "HttpMethod": "OPTIONS",
+                "Integration": {
+                    "IntegrationResponses": [
+                        {
+                            "ResponseParameters": {
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "StatusCode": "204"
+                        }
+                    ],
+                    "RequestTemplates": {
+                        "application/json": "{ statusCode: 200 }"
+                    },
+                    "Type": "MOCK"
+                },
+                "MethodResponses": [
+                    {
+                        "ResponseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": true,
+                            "method.response.header.Access-Control-Allow-Methods": true,
+                            "method.response.header.Access-Control-Allow-Origin": true
+                        },
+                        "StatusCode": "204"
+                    }
+                ],
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimagekeytagsCAE11F16"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekeytagsPOST63B56B3B": {
+            "Properties": {
+                "AuthorizationType": "NONE",
+                "HttpMethod": "POST",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":apigateway:",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                ":lambda:path/2015-03-31/functions/",
+                                {
+                                    "Fn::GetAtt": [
+                                        "AddTagsLambda16764F03",
+                                        "Arn"
+                                    ]
+                                },
+                                "/invocations"
+                            ]
+                        ]
+                    }
+                },
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimagekeytagsCAE11F16"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagekeytagsPOSTApiPermissionKoromothViewerCdkPyStackKoromothViewerApi230C318EPOSTimagekeytagsEC5951A6": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "AddTagsLambda16764F03",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/",
+                            {
+                                "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                            },
+                            "/POST/image/*/tags"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagekeytagsPOSTApiPermissionTestKoromothViewerCdkPyStackKoromothViewerApi230C318EPOSTimagekeytags168F5A91": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "AddTagsLambda16764F03",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/test-invoke-stage/POST/image/*/tags"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimages249C2670": {
+            "Properties": {
+                "ParentId": {
+                    "Fn::GetAtt": [
+                        "KoromothViewerApi044C2EBB",
+                        "RootResourceId"
+                    ]
+                },
+                "PathPart": "images",
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Resource"
+        },
+        "KoromothViewerApiimagesGET2508B7C0": {
+            "Properties": {
+                "AuthorizationType": "NONE",
+                "HttpMethod": "GET",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":apigateway:",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                ":lambda:path/2015-03-31/functions/",
+                                {
+                                    "Fn::GetAtt": [
+                                        "GetImagesLambdaA876D4CB",
+                                        "Arn"
+                                    ]
+                                },
+                                "/invocations"
+                            ]
+                        ]
+                    }
+                },
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimages249C2670"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "KoromothViewerApiimagesGETApiPermissionKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimages339F92DE": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "GetImagesLambdaA876D4CB",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/",
+                            {
+                                "Ref": "KoromothViewerApiDeploymentStageprodDD06AF2F"
+                            },
+                            "/GET/images"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagesGETApiPermissionTestKoromothViewerCdkPyStackKoromothViewerApi230C318EGETimages346ACB98": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "GetImagesLambdaA876D4CB",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            ":execute-api:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            ":",
+                            {
+                                "Ref": "KoromothViewerApi044C2EBB"
+                            },
+                            "/test-invoke-stage/GET/images"
+                        ]
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "KoromothViewerApiimagesOPTIONS06BA2089": {
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "HttpMethod": "OPTIONS",
+                "Integration": {
+                    "IntegrationResponses": [
+                        {
+                            "ResponseParameters": {
+                                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "StatusCode": "204"
+                        }
+                    ],
+                    "RequestTemplates": {
+                        "application/json": "{ statusCode: 200 }"
+                    },
+                    "Type": "MOCK"
+                },
+                "MethodResponses": [
+                    {
+                        "ResponseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": true,
+                            "method.response.header.Access-Control-Allow-Methods": true,
+                            "method.response.header.Access-Control-Allow-Origin": true
+                        },
+                        "StatusCode": "204"
+                    }
+                ],
+                "ResourceId": {
+                    "Ref": "KoromothViewerApiimages249C2670"
+                },
+                "RestApiId": {
+                    "Ref": "KoromothViewerApi044C2EBB"
+                }
+            },
+            "Type": "AWS::ApiGateway::Method"
+        },
+        "ServeImageLambda413BEDE8": {
+            "DependsOn": [
+                "ServeImageLambdaServiceRoleDefaultPolicyDCB74DD5",
+                "ServeImageLambdaServiceRole0950E91D"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
+                    },
+                    "S3Key": "fbbd283162ebd5b2b50b677f4e24fc3c323adc9871636b5ba4bdbc73966a10b6.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "BUCKET_NAME": {
+                            "Ref": "ExistingBucketName"
+                        }
+                    }
+                },
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ServeImageLambdaServiceRole0950E91D",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs20.x",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ServeImageLambdaServiceRole0950E91D": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "ServeImageLambdaServiceRoleDefaultPolicyDCB74DD5": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:GetObject*",
+                                "s3:GetBucket*",
+                                "s3:List*"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "ExistingBucketName"
+                                            }
+                                        ]
+                                    ]
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:",
+                                            {
+                                                "Ref": "AWS::Partition"
+                                            },
+                                            ":s3:::",
+                                            {
+                                                "Ref": "ExistingBucketName"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "ServeImageLambdaServiceRoleDefaultPolicyDCB74DD5",
+                "Roles": [
+                    {
+                        "Ref": "ServeImageLambdaServiceRole0950E91D"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "TagImagesTableE597638A": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "Tag",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "ImageKey",
+                        "AttributeType": "S"
+                    }
+                ],
+                "BillingMode": "PAY_PER_REQUEST",
+                "KeySchema": [
+                    {
+                        "AttributeName": "Tag",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "ImageKey",
+                        "KeyType": "RANGE"
+                    }
+                ]
+            },
+            "Type": "AWS::DynamoDB::Table",
+            "UpdateReplacePolicy": "Retain"
+        }
+    },
+    "Rules": {
+        "CheckBootstrapVersion": {
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::Not": [
+                            {
+                                "Fn::Contains": [
+                                    [
+                                        "1",
+                                        "2",
+                                        "3",
+                                        "4",
+                                        "5"
+                                    ],
+                                    {
+                                        "Ref": "BootstrapVersion"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+                }
+            ]
+        }
+    }
+}

@@ -45,6 +45,7 @@ class KoromothViewerCdkPyStack(Stack):
             "bundling": nodejs.BundlingOptions(
                 force_docker_bundling=False
             ),
+            "deps_lock_file_path": "lambda/package-lock.json",
             "memory_size": 128,
             "timeout": Duration.seconds(30),
         }
