@@ -34,6 +34,12 @@ class KoromothViewerCdkPyStack(Stack):
 
         thumbnail_bucket = s3.Bucket(self, "ThumbnailBucket",
             public_read_access=True,
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                block_public_policy=False,
+                ignore_public_acls=False,
+                restrict_public_buckets=False
+            ),
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
         )
