@@ -1,12 +1,13 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 const IMAGE_TAGS_TABLE_NAME = process.env.IMAGE_TAGS_TABLE_NAME;
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;
 
-export const handler = async (event) => {
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
         console.log("Received event:", JSON.stringify(event, null, 2));
 
@@ -15,6 +16,13 @@ export const handler = async (event) => {
             return {
                 statusCode: 400,
                 body: JSON.stringify({ message: "Missing image key in path." }),
+            };
+        }
+
+        if (!event.body) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ message: "Missing request body." }),
             };
         }
 
@@ -51,7 +59,7 @@ export const handler = async (event) => {
 
         const batchWriteCommand = new BatchWriteCommand({
             RequestItems: {
-                [TAG_IMAGES_TABLE_NAME]: putRequests,
+                [TAG_IMAGES_TABLE_NAME as string]: putRequests,
             },
         });
 
@@ -69,13 +77,14 @@ export const handler = async (event) => {
         };
     } catch (error) {
         console.error("Error adding tags:", error);
+        const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred';
         return {
             statusCode: 500,
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
             },
-            body: JSON.stringify({ message: 'Failed to add tags.', error: error.message }),
+            body: JSON.stringify({ message: 'Failed to add tags.', error: errorMessage }),
         };
     }
 };
