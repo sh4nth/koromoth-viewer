@@ -72,7 +72,7 @@ The project has two separate test suites.
 
 ## Deployment
 
-The entire stack (backend and frontend) is deployed with a single command.
+The entire stack (backend and frontend) can be deployed with a single command.
 
 1.  **Build the UI for production:**
     ```bash
@@ -80,11 +80,20 @@ The entire stack (backend and frontend) is deployed with a single command.
     cd ui
     npm run build
     ```
-2.  **Deploy the CDK Stack:**
+2.  **Deploy the Full Stack:**
     ```bash
     # Run from the project root
     cd ..
     cdk deploy --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME>
     ```
+    After deployment, the CDK will output the `CloudFrontUrl`, which is the public URL for your web application.
 
-After deployment, the CDK will output the `CloudFrontUrl`, which is the public URL for your web application.
+### Backend-Only Deployment (for Local UI Development)
+
+If you are developing the UI locally and only need the backend deployed, you can pass the `NoUi` context variable to the CDK:
+
+```bash
+cdk deploy --context NoUi=true --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME>
+```
+
+This will deploy all the backend resources and enable CORS on the API Gateway. The `ApiUrl` output can then be used as the base URL for your local UI development.

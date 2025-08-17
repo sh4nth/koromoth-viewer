@@ -116,55 +116,57 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
 
         # --- Frontend Hosting Resources ---
-
-        # S3 bucket to store the built UI assets
-        ui_bucket = s3.Bucket(self, "UiBucket",
-            bucket_name=f"koromoth-viewer-ui-bucket-{self.account}-{self.region}",
-            public_read_access=False,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-        )
-
-        # CloudFront distribution to serve the UI and proxy API calls
-        distribution = cloudfront.Distribution(self, "CloudFrontDistribution",
-            default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3Origin(ui_bucket),
-                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            ),
-            default_root_object="index.html",
-            error_responses=[
-                cloudfront.ErrorResponse(
-                    http_status=404,
-                    response_http_status=200,
-                    response_page_path="/index.html",
-                )
-            ]
-        )
-
-        # Add a new behavior for the API Gateway
-        api_origin = origins.HttpOrigin(f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
-            origin_path=f"/{api.deployment_stage.stage_name}"
-        )
-        distribution.add_behavior("/api/*", api_origin)
-
-        # Deploy the UI assets to the S3 bucket
-        s3_deployment.BucketDeployment(self, "DeployUi",
-            sources=[s3_deployment.Source.asset(os.path.join(os.path.dirname(__file__), "..", "ui", "dist"))],
-            destination_bucket=ui_bucket,
-            distribution=distribution,
-            distribution_paths=["/*"],
-        )
-
-        # --- CDK Outputs ---
-        CfnOutput(self, "CloudFrontUrl",
-            value=f"https://{distribution.distribution_domain_name}",
-            description="The URL for the CloudFront distribution.",
-        )
-        CfnOutput(self, "UiBucketName",
-            value=ui_bucket.bucket_name,
-            description="The name of the S3 bucket for the UI assets.",
-        )
+        no_ui_str = self.node.try_get_context("NoUi")
+        print(f'No UI strr = {no_ui_str}')
+        if no_ui_str != 'true':
+             # S3 bucket to store the built UI assets
+             ui_bucket = s3.Bucket(self, "UiBucket",
+                 bucket_name=f"koromoth-viewer-ui-bucket-{self.account}-{self.region}",
+                 public_read_access=False,
+                 block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+                 removal_policy=RemovalPolicy.DESTROY,
+                 auto_delete_objects=True,
+             )
+        
+             # CloudFront distribution to serve the UI and proxy API calls
+             distribution = cloudfront.Distribution(self, "CloudFrontDistribution",
+                 default_behavior=cloudfront.BehaviorOptions(
+                     origin=origins.S3Origin(ui_bucket),
+                     viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                 ),
+                 default_root_object="index.html",
+                 error_responses=[
+                     cloudfront.ErrorResponse(
+                         http_status=404,
+                         response_http_status=200,
+                         response_page_path="/index.html",
+                     )
+                 ]
+             )
+        
+             # Add a new behavior for the API Gateway
+             api_origin = origins.HttpOrigin(f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
+                 origin_path=f"/{api.deployment_stage.stage_name}"
+             )
+             distribution.add_behavior("/api/*", api_origin)
+        
+             # Deploy the UI assets to the S3 bucket
+             s3_deployment.BucketDeployment(self, "DeployUi",
+                 sources=[s3_deployment.Source.asset(os.path.join(os.path.dirname(__file__), "..", "ui", "dist"))],
+                 destination_bucket=ui_bucket,
+                 distribution=distribution,
+                 distribution_paths=["/*"],
+             )
+        
+             # --- CDK Outputs ---
+             CfnOutput(self, "CloudFrontUrl",
+                 value=f"https://{distribution.distribution_domain_name}",
+                 description="The URL for the CloudFront distribution.",
+             )
+             CfnOutput(self, "UiBucketName",
+                 value=ui_bucket.bucket_name,
+                 description="The name of the S3 bucket for the UI assets.",
+             )
         CfnOutput(self, "ImageTagsTableName",
             value=image_tags_table.table_name,
             description="The name of the DynamoDB table that stores image tags.",
