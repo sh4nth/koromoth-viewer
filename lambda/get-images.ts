@@ -13,7 +13,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     try {
         console.log("Received event:", JSON.stringify(event, null, 2));
 
-        const tags = event.queryStringParameters?.tag;
+        const tags = event.multiValueQueryStringParameters?.tag;
 
         if (tags) {
             return getImagesByTags(tags);
@@ -34,10 +34,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 };
 
-const getImagesByTags = async (tags: string | string[]): Promise<APIGatewayProxyResult> => {
-    const tagList = Array.isArray(tags) ? tags : [tags];
-
-    const queryPromises = tagList.map(tag => {
+const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> => {
+    const queryPromises = tags.map(tag => {
         const queryCommand = new QueryCommand({
             TableName: TAG_IMAGES_TABLE_NAME,
             KeyConditionExpression: "Tag = :t",
@@ -65,7 +63,7 @@ const getImagesByTags = async (tags: string | string[]): Promise<APIGatewayProxy
             'Access-Control-Allow-Origin': '*',
         },
         body: JSON.stringify({
-            tags: tagList,
+            tags: tags,
             imageKeys: [...intersection],
         }),
     };
