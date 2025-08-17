@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 // You will need to replace this with your actual API Gateway endpoint
-const API_BASE_URL = 'YOUR_API_GATEWAY_URL';
+const API_BASE_URL = '';
 
 const ImageList = () => {
   const [imageKeys, setImageKeys] = useState<string[]>([]);

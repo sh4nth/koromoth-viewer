@@ -2,6 +2,9 @@ import os
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
+    aws_s3_deployment as s3_deployment,
+    aws_cloudfront as cloudfront,
+    aws_cloudfront_origins as origins,
     aws_lambda_nodejs as nodejs,
     aws_lambda as lambda_,
     aws_apigateway as apigw,
@@ -9,6 +12,7 @@ from aws_cdk import (
     CfnOutput,
     CfnParameter,
     Duration,
+    RemovalPolicy,
 )
 from constructs import Construct
 
@@ -16,6 +20,8 @@ class KoromothViewerCdkPyStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        # --- Backend Resources ---
 
         existing_bucket_name_param = CfnParameter(self, "ExistingBucketName",
             type="String",
@@ -31,12 +37,14 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags_table = dynamodb.Table(self, "ImageTagsTable",
             partition_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         tag_images_table = dynamodb.Table(self, "TagImagesTable",
             partition_key=dynamodb.Attribute(name="Tag", type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name="ImageKey", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         common_nodejs_props = {
@@ -52,9 +60,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         serve_image_lambda = nodejs.NodejsFunction(self, "ServeImageLambda",
             entry="lambda/get-image.ts",
-            environment={
-                "BUCKET_NAME": existing_bucket_name_param.value_as_string,
-            },
+            environment={ "BUCKET_NAME": existing_bucket_name_param.value_as_string },
             **common_nodejs_props
         )
         images_bucket.grant_read(serve_image_lambda)
@@ -83,9 +89,7 @@ class KoromothViewerCdkPyStack(Stack):
 
         get_tags_lambda = nodejs.NodejsFunction(self, "GetTagsLambda",
             entry="lambda/get-tags.ts",
-            environment={
-                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
-            },
+            environment={ "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name },
             **common_nodejs_props
         )
         image_tags_table.grant_read_data(get_tags_lambda)
@@ -93,40 +97,68 @@ class KoromothViewerCdkPyStack(Stack):
         api = apigw.RestApi(self, "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
             description="Serves presigned URLs for images from S3",
-            default_cors_preflight_options=apigw.CorsOptions(
-                allow_origins=apigw.Cors.ALL_ORIGINS,
-                allow_methods=apigw.Cors.ALL_METHODS,
-                allow_headers=["Content-Type"],
-            ),
         )
 
-        # --- API Gateway Resources ---
-
-        # /images
         images = api.root.add_resource("images")
-        
-        # GET /images[?tag={tag1}&tag={tag2}] (lists all images with all specified tags, if no tags provided, lists all images)
         images.add_method("GET", apigw.LambdaIntegration(get_images_lambda))
 
-        # /image/{key}
         image_key = api.root.add_resource("image").add_resource("{key}")
-        
-        # GET /image/{key}
         image_key.add_method("GET", apigw.LambdaIntegration(serve_image_lambda))
 
-        # /image/{key}/tags
         image_tags = image_key.add_resource("tags")
-        
-        # GET /image/{key}/tags
         image_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
-        
-        # POST /image/{key}/tags
         image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
 
+        # --- Frontend Hosting Resources ---
+
+        # S3 bucket to store the built UI assets
+        ui_bucket = s3.Bucket(self, "UiBucket",
+            bucket_name=f"koromoth-viewer-ui-bucket-{self.account}-{self.region}",
+            public_read_access=False,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+        )
+
+        # CloudFront distribution to serve the UI and proxy API calls
+        distribution = cloudfront.Distribution(self, "CloudFrontDistribution",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3Origin(ui_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            ),
+            default_root_object="index.html",
+            error_responses=[
+                cloudfront.ErrorResponse(
+                    http_status=404,
+                    response_http_status=200,
+                    response_page_path="/index.html",
+                )
+            ]
+        )
+
+        # Add a new behavior for the API Gateway
+        api_origin = origins.HttpOrigin(f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
+            origin_path=f"/{api.deployment_stage.stage_name}"
+        )
+        distribution.add_behavior("/images*", api_origin)
+        distribution.add_behavior("/image*", api_origin)
+
+        # Deploy the UI assets to the S3 bucket
+        s3_deployment.BucketDeployment(self, "DeployUi",
+            sources=[s3_deployment.Source.asset(os.path.join(os.path.dirname(__file__), "..", "ui", "dist"))],
+            destination_bucket=ui_bucket,
+            distribution=distribution,
+            distribution_paths=["/*"],
+        )
+
         # --- CDK Outputs ---
-        CfnOutput(self, "UsedS3BucketName",
-            value=existing_bucket_name_param.value_as_string,
-            description="The name of the S3 bucket used for image storage.",
+        CfnOutput(self, "CloudFrontUrl",
+            value=f"https://{distribution.distribution_domain_name}",
+            description="The URL for the CloudFront distribution.",
+        )
+        CfnOutput(self, "UiBucketName",
+            value=ui_bucket.bucket_name,
+            description="The name of the S3 bucket for the UI assets.",
         )
         CfnOutput(self, "ImageTagsTableName",
             value=image_tags_table.table_name,
@@ -135,30 +167,4 @@ class KoromothViewerCdkPyStack(Stack):
         CfnOutput(self, "TagImagesTableName",
             value=tag_images_table.table_name,
             description="The name of the DynamoDB table that serves as the inverted index for tags.",
-        )
-
-        # API Endpoints
-        CfnOutput(self, "ApiUrl",
-            value=api.url,
-            description="The base URL for the API Gateway.",
-        )
-        CfnOutput(self, "ListImagesEndpoint",
-            value=f"GET {api.url}images",
-            description="Lists all image keys.",
-        )
-        CfnOutput(self, "GetImageEndpoint",
-            value=f"GET {api.url}image/{{key}}",
-            description="Gets a presigned URL for an image.",
-        )
-        CfnOutput(self, "GetImageTagsEndpoint",
-            value=f"GET {api.url}image/{{key}}/tags",
-            description="Gets all tags for an image.",
-        )
-        CfnOutput(self, "AddImageTagsEndpoint",
-            value=f"POST {api.url}image/{{key}}/tags",
-            description="Adds one or more tags to an image.",
-        )
-        CfnOutput(self, "GetImagesByTagEndpoint",
-            value=f"GET {api.url}tags/{{tag}}/images",
-            description="Gets all images for a specific tag.",
         )
