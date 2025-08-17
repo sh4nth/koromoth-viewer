@@ -1,8 +1,8 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const IMAGE_TAGS_TABLE_NAME = process.env.IMAGE_TAGS_TABLE_NAME;
 
@@ -23,9 +23,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             Key: { ImageKey: imageKey },
         });
 
-        const { Item } = await dynamoDBClient.send(getTagsCommand);
+        const { Item } = await ddbDocClient.send(getTagsCommand);
 
-        const tags = Item && Item.Tags ? Array.from(Item.Tags) : [];
+        const tags = Item?.Tags?.values ?? [];
 
         return {
             statusCode: 200,
@@ -35,7 +35,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             },
             body: JSON.stringify({
                 imageKey: imageKey,
-                tags: tags,
+                tags: [...tags],
             }),
         };
     } catch (error) {

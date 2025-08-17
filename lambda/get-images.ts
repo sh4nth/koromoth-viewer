@@ -3,8 +3,7 @@ import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const baseDynamoDBClient = new DynamoDBClient({});
-const ddbDocClient = DynamoDBDocumentClient.from(baseDynamoDBClient);
+const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const s3Client = new S3Client({});
 
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;

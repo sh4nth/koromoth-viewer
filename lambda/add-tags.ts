@@ -1,8 +1,8 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { UpdateCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, UpdateCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const IMAGE_TAGS_TABLE_NAME = process.env.IMAGE_TAGS_TABLE_NAME;
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;
@@ -40,12 +40,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             Key: { ImageKey: imageKey },
             UpdateExpression: "ADD Tags :t",
             ExpressionAttributeValues: {
-                ":t": new Set(tags),
+                ":t": ddbDocClient.createSet(tags),
             },
             ReturnValues: "UPDATED_NEW",
         });
 
-        await dynamoDBClient.send(updateImageTagsCommand);
+        await ddbDocClient.send(updateImageTagsCommand);
 
         // 2. Update the TagImagesTable (inverted index)
         const putRequests = tags.map(tag => ({
@@ -63,7 +63,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             },
         });
 
-        await dynamoDBClient.send(batchWriteCommand);
+        await ddbDocClient.send(batchWriteCommand);
 
         return {
             statusCode: 200,
