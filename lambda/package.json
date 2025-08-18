@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "node --loader ts-node/esm node_modules/jasmine/bin/jasmine.js --config=jasmine.json"
+    "test": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' node_modules/jasmine/bin/jasmine.js --config=jasmine.json"
   },
   "author": "",
   "license": "ISC",

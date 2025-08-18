@@ -1,7 +1,7 @@
 import { handler } from '../get-images.js';
 import { mockClient } from 'aws-sdk-client-mock';
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client } from '@aws-sdk/client-s3';
+import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 // Mock the AWS SDK clients
@@ -17,9 +17,12 @@ describe('get-images handler', () => {
   });
 
   it('should list all images when no tags are provided', async () => {
-    // Arrange: Mock the S3 ListObjectsV2Command
-    const mockImageKeys = [{ Key: 'image1.jpg' }, { Key: 'image2.png' }];
-    s3Mock.on(ListObjectsV2Command).resolves({ Contents: mockImageKeys });
+    // Arrange: Mock the DynamoDB ScanCommand
+    const mockImages = [
+      { ImageKey: 'image1.jpg', ThumbnailUrl: 'http://example.com/thumb1.jpg' },
+      { ImageKey: 'image2.png', ThumbnailUrl: 'http://example.com/thumb2.png' },
+    ];
+    ddbMock.on(ScanCommand).resolves({ Items: mockImages });
 
     const event: Partial<APIGatewayProxyEvent> = {
       multiValueQueryStringParameters: {}, // No tags
@@ -31,8 +34,7 @@ describe('get-images handler', () => {
     // Assert: Check the result
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.images).toEqual(['image1.jpg', 'image2.png']);
-    expect(body.message).toContain('2 images');
+    expect(body.images).toEqual(mockImages);
   });
 
   it('should return the intersection of images when multiple tags are provided', async () => {
