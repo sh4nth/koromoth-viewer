@@ -8,7 +8,7 @@ const defaultHeaders = {
 };
 
 export class ApiResponse {
-  static success(body: Record<string, any>): APIGatewayProxyResult {
+  static success<T>(body: T): APIGatewayProxyResult {
     return {
       statusCode: 200,
       headers: defaultHeaders,
@@ -25,13 +25,17 @@ export class ApiResponse {
   }
 
   static serverError(error: unknown): APIGatewayProxyResult {
-    console.error("Server Error:", error);
-    const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred';
-    
+    console.error('Server Error:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
+
     return {
       statusCode: 500,
       headers: defaultHeaders,
-      body: JSON.stringify({ message: 'An internal server error occurred.', error: errorMessage }),
+      body: JSON.stringify({
+        message: 'An internal server error occurred.',
+        error: errorMessage,
+      }),
     };
   }
 }

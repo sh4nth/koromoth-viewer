@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' node_modules/jasmine/bin/jasmine.js --config=jasmine.json"
+    "test": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' node_modules/jasmine/bin/jasmine.js --config=jasmine.json",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "author": "",
   "license": "ISC",
@@ -22,9 +25,15 @@
     "@types/aws-lambda": "^8.10.138",
     "@types/jasmine": "^5.1.4",
     "@types/node": "^20.14.2",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
     "aws-sdk-client-mock": "^4.0.0",
     "esbuild": "^0.25.9",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
     "jasmine": "^5.1.0",
+    "prettier": "^3.3.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

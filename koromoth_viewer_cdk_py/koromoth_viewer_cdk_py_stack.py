@@ -131,10 +131,12 @@ class KoromothViewerCdkPyStack(Stack):
             entry="lambda/get-images.ts",
             environment={
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
             **common_nodejs_props,
         )
         image_tags_table.grant_read_data(get_images_lambda)
+        tag_images_table.grant_read_data(get_images_lambda)
 
         add_tags_lambda = nodejs.NodejsFunction(
             self,

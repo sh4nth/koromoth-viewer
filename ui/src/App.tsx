@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import ImageList from './components/ImageList';
-import ImageDetail from './components/ImageDetail';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ImageList from "./components/ImageList";
+import ImageDetail from "./components/ImageDetail";
 
 function App() {
   return (
