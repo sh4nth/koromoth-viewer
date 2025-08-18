@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# See https://docs.astral.sh/ruff/rules/ for a full list of rules
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+
+[tool.ruff.lint.isort]
+# This tells isort to combine "from a import b, c" into a single line if it fits
+combine-as-imports = true
+

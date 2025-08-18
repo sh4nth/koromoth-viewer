@@ -1,78 +1,106 @@
-# Welcome to the KoromothViewer CDK Python project!
+# Koromoth Viewer
 
-This is a CDK project for a serverless image viewer backend.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-## Setup and Deployment
-
-This project is set up like a standard Python project. The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory. To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
-
-To manually create a virtualenv on MacOS and Linux:
-
-```
-$ python3 -m venv .venv
-```
-
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
-
-```
-$ source .venv/bin/activate
-```
-
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
-```
-
-At this point you can now synthesize the CloudFormation template for this code.
-
-```
-$ cdk synth
-```
-
-To deploy the CDK stack, you need to provide the name of the existing S3 bucket that contains your images. This is done using the `ExistingBucketName` parameter.
-
-```
-$ cdk deploy --parameters ExistingBucketName=<YOUR-S3-BUCKET-NAME>
-```
+A serverless image gallery application built with the AWS CDK, TypeScript, and React.
 
 ## Architecture
 
-The architecture of the Koromoth Viewer backend is simple and serverless, consisting of an API Gateway, a Lambda function, and an S3 bucket.
+This project consists of a serverless backend and a React single-page application frontend.
 
-### API Gateway
+-   **Frontend**: A React SPA built with Vite and styled with Bootstrap. It is hosted on an **S3 Bucket** and served globally via **Amazon CloudFront**.
+-   **Backend API**: An **Amazon API Gateway** proxies requests to the backend logic. All endpoints are namespaced under `/api`.
+-   **Compute**: **AWS Lambda** functions written in TypeScript handle all backend logic.
+-   **Storage**:
+    -   An existing **S3 Bucket** is used to store the original image files.
+    -   Two **Amazon DynamoDB** tables are used to store image tags and an inverted index for efficient tag-based lookups.
 
-The API Gateway provides a public HTTP endpoint that clients can use to request image URLs. It is configured with CORS (Cross-Origin Resource Sharing) to allow requests from any origin. The following endpoints are available:
+## Project Setup
 
-*   `GET /image/<KEY>`: Retrieves a pre-signed URL for a specific image.
-*   `GET /images`: Retrieves a list of all available image keys in the bucket.
+### Prerequisites
 
-### Lambda Function
+-   AWS Account and configured AWS CLI
+-   Node.js and npm
+-   Python and pip
+-   AWS CDK Toolkit (`npm install -g aws-cdk`)
 
-The Lambda function is a Node.js function that contains the core logic of the backend. It receives the request from the API Gateway and extracts the image key from the query string parameters.
+### Installation
 
-Using the AWS SDK, the function generates a pre-signed URL for the requested image in the S3 bucket. This URL grants temporary, secure access to the image file. The Lambda function then returns the pre-signed URL to the client in a JSON response.
+1.  **Clone the repository.**
+2.  **Set up the Python environment** (for CDK):
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    pip install -r requirements-dev.txt
+    ```
+3.  **Install Backend Dependencies** (for Lambda functions):
+    ```bash
+    cd lambda
+    npm install
+    ```
+    **Install linux binary for sharp**
+    ```
+    mkdir sharp_layer
+    cd sharp_layer
+    npm init -y
+    npm install --cpu=x64 --os=linux sharp
+    ```
+4.  **Install Frontend Dependencies** (for the UI):
+    ```bash
+    cd ../ui
+    npm install
+    ```
 
-The name of the S3 bucket is passed to the Lambda function as an environment variable, which is set by the CDK stack during deployment.
+## Development
 
-### S3 Bucket
+To run the UI locally for development, first ensure the backend has been deployed.
 
-The S3 bucket is the storage for the images. The CDK stack does not create a new bucket; instead, it references an existing bucket that you specify during deployment. The Lambda function is granted read-only access to this bucket, allowing it to generate pre-signed URLs for the objects within it.
+1.  **Start the Vite dev server:**
+    ```bash
+    cd ui
+    npm run dev
+    ```
+2.  Open your browser to the local address provided (e.g., `http://localhost:5173`).
 
-## Useful commands
+## Testing
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy --parameters ExistingBucketName=<YOUR-S3-BUCKET-NAME>`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+The project has two separate test suites.
 
-Enjoy!
+-   **CDK Infrastructure Tests (Python):**
+    ```bash
+    # Run from the project root
+    pytest
+    ```
+-   **Lambda Function Unit Tests (TypeScript):**
+    ```bash
+    # Run from the lambda directory
+    cd lambda
+    npm test
+    ```
+
+## Deployment
+
+The entire stack (backend and frontend) can be deployed with a single command.
+
+1.  **Build the UI for production:**
+    ```bash
+    # Run from the ui directory
+    cd ui
+    npm run build
+    ```
+2.  **Deploy the Full Stack:**
+    ```bash
+    # Run from the project root
+    cd ..
+    cdk deploy --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME>
+    ```
+    After deployment, the CDK will output the `CloudFrontUrl`, which is the public URL for your web application.
+
+### Backend-Only Deployment (for Local UI Development)
+
+If you are developing the UI locally and only need the backend deployed, you can pass the `NoUi` context variable to the CDK:
+
+```bash
+cdk deploy --context NoUi=true --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME>
+```
+
+This will deploy all the backend resources and enable CORS on the API Gateway. The `ApiUrl` output can then be used as the base URL for your local UI development.

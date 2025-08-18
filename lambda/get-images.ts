@@ -1,14 +1,12 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { DynamoDBDocumentClient, ScanCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ApiResponse } from './utils/response.js';
 
 const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const s3Client = new S3Client({});
 
+const IMAGE_TAGS_TABLE_NAME = process.env.IMAGE_TAGS_TABLE_NAME;
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;
-const BUCKET_NAME = process.env.BUCKET_NAME;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
@@ -25,6 +23,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 };
 
 const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> => {
+    // This logic remains the same, as it queries the inverted index table
     const queryPromises = tags.map(tag => {
         const queryCommand = new QueryCommand({
             TableName: TAG_IMAGES_TABLE_NAME,
@@ -51,15 +50,15 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
 };
 
 const listAllImages = async (): Promise<APIGatewayProxyResult> => {
-    const command = new ListObjectsV2Command({
-        Bucket: BUCKET_NAME,
+    // New logic: Scan the ImageTagsTable to get all image data
+    const scanCommand = new ScanCommand({
+        TableName: IMAGE_TAGS_TABLE_NAME,
+        ProjectionExpression: "ImageKey, ThumbnailUrl",
     });
 
-    const { Contents } = await s3Client.send(command);
-    const imageKeys = Contents ? Contents.map(c => c.Key) : [];
+    const { Items } = await ddbDocClient.send(scanCommand);
 
     return ApiResponse.success({
-        images: imageKeys,
-        message: `Successfully retrieved ${imageKeys.length} images.`,
+        images: Items || [],
     });
 };
