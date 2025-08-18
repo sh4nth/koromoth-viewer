@@ -39,7 +39,9 @@ export const handler = async (event: S3Event): Promise<void> => {
 
       // 3. Generate a unique, salted hash for the thumbnail filename
       const salt = new Date().toISOString();
-      const hash = createHash('sha256').update(imageKey + salt).digest('hex');
+      const hash = createHash('sha256')
+        .update(imageKey + salt)
+        .digest('hex');
       const thumbnailKey = `${hash}.jpg`;
 
       // 4. Upload the thumbnail to the public bucket
@@ -64,7 +66,6 @@ export const handler = async (event: S3Event): Promise<void> => {
       await ddbDocClient.send(updateCommand);
 
       console.log(`Successfully created thumbnail for ${imageKey}`);
-
     } catch (error) {
       console.error(`Error processing ${imageKey}:`, error);
     }

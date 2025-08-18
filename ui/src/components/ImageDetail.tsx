@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 
 // You will need to replace this with your actual API Gateway endpoint
-const API_BASE_URL = '/api';
+const API_BASE_URL = "/api";
 
 const ImageDetail = () => {
   const { imageKey } = useParams<{ imageKey: string }>();
@@ -16,19 +16,24 @@ const ImageDetail = () => {
     const fetchImageDetails = async () => {
       try {
         // Fetch image URL
-        const imageUrlResponse = await fetch(`${API_BASE_URL}/image/${imageKey}`);
-        if (!imageUrlResponse.ok) throw new Error('Failed to fetch image URL');
+        const imageUrlResponse = await fetch(
+          `${API_BASE_URL}/image/${imageKey}`,
+        );
+        if (!imageUrlResponse.ok) throw new Error("Failed to fetch image URL");
         const imageUrlData = await imageUrlResponse.json();
         setImageUrl(imageUrlData.imageUrl);
 
         // Fetch tags
-        const tagsResponse = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`);
-        if (!tagsResponse.ok) throw new Error('Failed to fetch tags');
+        const tagsResponse = await fetch(
+          `${API_BASE_URL}/image/${imageKey}/tags`,
+        );
+        if (!tagsResponse.ok) throw new Error("Failed to fetch tags");
         const tagsData = await tagsResponse.json();
         setTags(tagsData.tags || []);
-
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred",
+        );
       }
     };
 
@@ -43,9 +48,11 @@ const ImageDetail = () => {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>{imageKey}</h1>
-        <Link to="/" className="btn btn-primary">Back to Gallery</Link>
+        <Link to="/" className="btn btn-primary">
+          Back to Gallery
+        </Link>
       </div>
-      
+
       {imageUrl ? (
         <img src={imageUrl} className="img-fluid rounded mb-4" alt={imageKey} />
       ) : (

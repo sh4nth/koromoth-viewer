@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 // You will need to replace this with your actual API Gateway endpoint
-const API_BASE_URL = '/api';
+const API_BASE_URL = "/api";
 
 const ImageList = () => {
   const [imageKeys, setImageKeys] = useState<string[]>([]);
@@ -13,12 +13,14 @@ const ImageList = () => {
       try {
         const response = await fetch(`${API_BASE_URL}/images`);
         if (!response.ok) {
-          throw new Error('Failed to fetch image list');
+          throw new Error("Failed to fetch image list");
         }
         const data = await response.json();
         setImageKeys(data.images || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred",
+        );
       }
     };
 
@@ -38,7 +40,10 @@ const ImageList = () => {
             <div className="card">
               <Link to={`/image/${encodeURIComponent(key)}`}>
                 {/* We will load the actual image later */}
-                <div className="card-img-top bg-secondary" style={{ height: '200px' }} />
+                <div
+                  className="card-img-top bg-secondary"
+                  style={{ height: "200px" }}
+                />
               </Link>
               <div className="card-body">
                 <p className="card-text text-truncate">{key}</p>
