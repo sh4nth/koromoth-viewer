@@ -215,6 +215,23 @@ class KoromothViewerCdkPyStack(Stack):
                 ],
             )
 
+            # Create a Cache Policy to include ALL query strings in the cache key
+            api_cache_policy = cloudfront.CachePolicy(self, "MyAPICachePolicy",
+                cache_policy_name="AllQueryStrings-CachePolicy",
+                comment="Cache key includes all query strings",
+                query_string_behavior=cloudfront.CacheQueryStringBehavior.all(),
+                # lambdas don't depend on headers and cookies for now
+                header_behavior=cloudfront.CacheHeaderBehavior.none(),
+                cookie_behavior=cloudfront.CacheCookieBehavior.none(),
+                enable_accept_encoding_gzip=True,
+                enable_accept_encoding_brotli=True,
+                # Set TTLs as per your requirements.
+                # Example: Respect origin Cache-Control headers, with a fallback.
+                default_ttl=Duration.minutes(5), # Fallback if no Cache-Control
+                min_ttl=Duration.seconds(0),    # Allow origin to specify 0 for no cache
+                max_ttl=Duration.days(1),       # Upper limit on caching
+            )
+
             # Add a new behavior for the API Gateway
             api_origin = origins.HttpOrigin(
                 f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
@@ -223,7 +240,7 @@ class KoromothViewerCdkPyStack(Stack):
             distribution.add_behavior(
                 "/api/*",
                 api_origin,
-                cache_policy=cloudfront.CachePolicy.ALL_VIEWER,
+                cache_policy=api_cache_policy,
                 allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
             )
 
