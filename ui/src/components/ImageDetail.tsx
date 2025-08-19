@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -94,6 +94,9 @@ const ImageDetail = () => {
           borderLeft: "1px solid #ccc",
         }}
       >
+        <Link to="/" className="btn btn-secondary mb-4">
+          &larr; Back to Gallery
+        </Link>
         <h3 className="mb-3">{imageKey}</h3>
 
         {/* Tags Section */}
