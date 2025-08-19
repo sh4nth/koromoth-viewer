@@ -32,7 +32,7 @@ export const handler = async (
     if (tags) {
       return getImagesByTags(tags, pageSize, nextPageToken);
     } else {
-      return listAllImages();
+      return listAllImages(pageSize, nextPageToken);
     }
   } catch (error) {
     return ApiResponse.serverError(error);
@@ -110,10 +110,10 @@ async function getImageKeys(
 const getImagesByTags = async (
   tags: string[],
   pageSize: number,
-  nextToken?: string,
+  nextPageToken?: string,
 ): Promise<APIGatewayProxyResult> => {
-  let nextCursor = nextToken
-    ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'))
+  let nextCursor = nextPageToken
+    ? JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'))
     : undefined;
   const allImageKeys: string[] = [];
 
@@ -135,12 +135,12 @@ const getImagesByTags = async (
     nextCursor = allImageKeys[pageSize];
   }
 
-  const nextPageToken = nextCursor
+  const finalNextPageToken = nextCursor
     ? Buffer.from(JSON.stringify(nextCursor)).toString('base64')
     : null;
 
   if (finalImageKeys.length === 0) {
-    return ApiResponse.success({ images: [], nextPageToken });
+    return ApiResponse.success({ images: [], nextPageToken: finalNextPageToken });
   }
 
   const batchGetCommand = new BatchGetCommand({
@@ -158,18 +158,32 @@ const getImagesByTags = async (
   // Sort the final results by ImageKey to ensure a consistent order.
   images.sort((a, b) => a.ImageKey.localeCompare(b.ImageKey));
 
-  return ApiResponse.success({ tags, images, nextPageToken });
+  return ApiResponse.success({ images, nextPageToken: finalNextPageToken });
 };
 
-const listAllImages = async (): Promise<APIGatewayProxyResult> => {
+const listAllImages = async (
+  pageSize: number,
+  nextPageToken?: string,
+): Promise<APIGatewayProxyResult> => {
+  const startKey = nextPageToken
+    ? JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'))
+    : undefined;
+
   const scanCommand = new ScanCommand({
     TableName: IMAGE_TAGS_TABLE_NAME,
     ProjectionExpression: 'ImageKey, ThumbnailUrl',
+    Limit: pageSize,
+    ExclusiveStartKey: startKey,
   });
 
-  const { Items } = await ddbDocClient.send(scanCommand);
+  const { Items, LastEvaluatedKey } = await ddbDocClient.send(scanCommand);
+
+  const finalNextPageToken = LastEvaluatedKey
+    ? Buffer.from(JSON.stringify(LastEvaluatedKey)).toString('base64')
+    : null;
 
   return ApiResponse.success({
     images: Items || [],
+    nextPageToken: finalNextPageToken,
   });
 };
