@@ -130,8 +130,8 @@ const getImagesByTags = async (
   let finalImageKeys = allImageKeys;
   if (allImageKeys.length > pageSize) {
     finalImageKeys = allImageKeys.slice(0, pageSize);
-    // The next token should point to the first item of the *next* page.
-    nextCursor = allImageKeys[pageSize];
+    // The next token should point to the last item we have seen because it is used as an exclusive startKey.
+    nextCursor = allImageKeys[pageSize - 1];
   }
 
   const finalNextPageToken = nextCursor
