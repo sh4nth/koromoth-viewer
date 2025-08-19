@@ -155,6 +155,9 @@ const getImagesByTags = async (
   const { Responses } = await ddbDocClient.send(batchGetCommand);
   const images = Responses ? Responses[IMAGE_TAGS_TABLE_NAME as string] : [];
 
+  // Sort the final results by ImageKey to ensure a consistent order.
+  images.sort((a, b) => a.ImageKey.localeCompare(b.ImageKey));
+
   return ApiResponse.success({ tags, images, nextPageToken });
 };
 
