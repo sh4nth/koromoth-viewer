@@ -1,7 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
-  ScanCommand,
   QueryCommand,
   BatchGetCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -169,14 +168,14 @@ const listAllImages = async (
     ? JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'))
     : undefined;
 
-  const scanCommand = new ScanCommand({
+  const queryCommand = new QueryCommand({
     TableName: IMAGE_TAGS_TABLE_NAME,
     ProjectionExpression: 'ImageKey, ThumbnailUrl',
     Limit: pageSize,
     ExclusiveStartKey: startKey,
   });
 
-  const { Items, LastEvaluatedKey } = await ddbDocClient.send(scanCommand);
+  const { Items, LastEvaluatedKey } = await ddbDocClient.send(queryCommand);
 
   const finalNextPageToken = LastEvaluatedKey
     ? Buffer.from(JSON.stringify(LastEvaluatedKey)).toString('base64')

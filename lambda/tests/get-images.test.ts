@@ -5,7 +5,6 @@ import {
   DynamoDBDocumentClient,
   BatchGetCommand,
   QueryCommand,
-  ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
@@ -26,7 +25,7 @@ describe('get-images handler', () => {
       { ImageKey: 'image1.jpg', ThumbnailUrl: 'http://example.com/thumb1.jpg' },
       { ImageKey: 'image2.png', ThumbnailUrl: 'http://example.com/thumb2.png' },
     ];
-    ddbMock.on(ScanCommand).resolves({ Items: mockImages });
+    ddbMock.on(QueryCommand).resolves({ Items: mockImages });
 
     const event: Partial<APIGatewayProxyEvent> = {
       multiValueQueryStringParameters: {}, // No tags
