@@ -220,7 +220,12 @@ class KoromothViewerCdkPyStack(Stack):
                 f"{api.rest_api_id}.execute-api.{self.region}.amazonaws.com",
                 origin_path=f"/{api.deployment_stage.stage_name}",
             )
-            distribution.add_behavior("/api/*", api_origin)
+            distribution.add_behavior(
+                "/api/*",
+                api_origin,
+                cache_policy=cloudfront.CachePolicy.ALL_VIEWER,
+                allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+            )
 
             # Deploy the UI assets to the S3 bucket
             s3_deployment.BucketDeployment(
