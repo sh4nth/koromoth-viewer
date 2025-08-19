@@ -4,19 +4,24 @@ import { Link } from "react-router-dom";
 // You will need to replace this with your actual API Gateway endpoint
 const API_BASE_URL = "/api";
 
+interface Image {
+  ImageKey: string;
+  ThumbnailUrl: string;
+}
+
 const ImageList = () => {
-  const [imageKeys, setImageKeys] = useState<string[]>([]);
+  const [images, setImages] = useState<Image[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchImageKeys = async () => {
+    const fetchImages = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/images`);
         if (!response.ok) {
           throw new Error("Failed to fetch image list");
         }
         const data = await response.json();
-        setImageKeys(data.images || []);
+        setImages(data.images || []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "An unknown error occurred",
@@ -24,7 +29,7 @@ const ImageList = () => {
       }
     };
 
-    fetchImageKeys();
+    fetchImages();
   }, []);
 
   if (error) {
@@ -35,18 +40,19 @@ const ImageList = () => {
     <div>
       <h1 className="mb-4">Image Gallery</h1>
       <div className="row">
-        {imageKeys.map((key) => (
-          <div key={key} className="col-md-4 mb-4">
+        {images.map((image) => (
+          <div key={image.ImageKey} className="col-md-4 mb-4">
             <div className="card">
-              <Link to={`/image/${encodeURIComponent(key)}`}>
-                {/* We will load the actual image later */}
-                <div
-                  className="card-img-top bg-secondary"
-                  style={{ height: "200px" }}
+              <Link to={`/image/${encodeURIComponent(image.ImageKey)}`}>
+                <img
+                  src={image.ThumbnailUrl}
+                  className="card-img-top"
+                  alt={image.ImageKey}
+                  style={{ height: "200px", objectFit: "cover" }}
                 />
               </Link>
               <div className="card-body">
-                <p className="card-text text-truncate">{key}</p>
+                <p className="card-text text-truncate">{image.ImageKey}</p>
               </div>
             </div>
           </div>
@@ -57,3 +63,4 @@ const ImageList = () => {
 };
 
 export default ImageList;
+
