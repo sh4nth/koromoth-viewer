@@ -25,18 +25,12 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const tags = event.multiValueQueryStringParameters?.tag;
-    const nextToken = event.queryStringParameters?.nextToken;
+    const nextPageToken = event.queryStringParameters?.nextPageToken;
 
-    let pageSize = DEFAULT_PAGE_SIZE;
-    if (event.queryStringParameters?.pageSize) {
-      const requestedSize = parseInt(event.queryStringParameters.pageSize, 10);
-      if (!isNaN(requestedSize) && requestedSize > 0) {
-        pageSize = Math.min(requestedSize, MAX_PAGE_SIZE);
-      }
-    }
+    const pageSize = getPageSize(event.queryStringParameters?.pageSize);
 
     if (tags) {
-      return getImagesByTags(tags, pageSize, nextToken);
+      return getImagesByTags(tags, pageSize, nextPageToken);
     } else {
       return listAllImages();
     }
@@ -45,18 +39,30 @@ export const handler = async (
   }
 };
 
+function getPageSize(pageSizeQueryParam: string | undefined) {
+  if (!pageSizeQueryParam) {
+    return DEFAULT_PAGE_SIZE;
+  }
+  const requestedSize = parseInt(pageSizeQueryParam, 10);
+  if (!isNaN(requestedSize) && requestedSize > 0) {
+    return Math.min(requestedSize, MAX_PAGE_SIZE);
+  }
+  return DEFAULT_PAGE_SIZE;
+}
+
 async function getImageKeys(
   tags: string[],
   startKey: string | undefined,
   pageSize: number,
 ): Promise<ImageKeysResult> {
+  const limitPerTag = tags.length > 1 ? 2 * pageSize : pageSize;
   // 1. Query each tag for its list of images, starting from the cursor.
   const queryPromises = tags.map((tag) => {
     const queryCommand = new QueryCommand({
       TableName: TAG_IMAGES_TABLE_NAME,
       KeyConditionExpression: 'Tag = :t',
       ExpressionAttributeValues: { ':t': tag },
-      Limit: pageSize,
+      Limit: limitPerTag,
       ExclusiveStartKey: startKey ? { Tag: tag, ImageKey: startKey } : undefined,
     });
     return ddbDocClient.send(queryCommand);
@@ -96,7 +102,7 @@ async function getImageKeys(
       : new Set();
 
   return {
-    imageKeys: [...intersection],
+    imageKeys: [...intersection].sort(),
     nextCursor,
   };
 }
@@ -106,22 +112,41 @@ const getImagesByTags = async (
   pageSize: number,
   nextToken?: string,
 ): Promise<APIGatewayProxyResult> => {
-  const startKey = nextToken
+  let nextCursor = nextToken
     ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'))
     : undefined;
+  const allImageKeys: string[] = [];
 
-  const { imageKeys, nextCursor } = await getImageKeys(tags, startKey, pageSize);
+  while (allImageKeys.length < pageSize) {
+    const result = await getImageKeys(tags, nextCursor, pageSize);
+    allImageKeys.push(...result.imageKeys);
+    nextCursor = result.nextCursor;
 
-  const nextPageToken = Buffer.from(JSON.stringify(nextCursor)).toString('base64');
+    if (!nextCursor) {
+      // No more items to fetch from the source
+      break;
+    }
+  }
 
-  if (imageKeys.length === 0) {
+  let finalImageKeys = allImageKeys;
+  if (allImageKeys.length > pageSize) {
+    finalImageKeys = allImageKeys.slice(0, pageSize);
+    // The next token should point to the first item of the *next* page.
+    nextCursor = allImageKeys[pageSize];
+  }
+
+  const nextPageToken = nextCursor
+    ? Buffer.from(JSON.stringify(nextCursor)).toString('base64')
+    : null;
+
+  if (finalImageKeys.length === 0) {
     return ApiResponse.success({ images: [], nextPageToken });
   }
 
   const batchGetCommand = new BatchGetCommand({
     RequestItems: {
       [IMAGE_TAGS_TABLE_NAME as string]: {
-        Keys: imageKeys.map((key) => ({ ImageKey: key })),
+        Keys: finalImageKeys.map((key) => ({ ImageKey: key })),
         ProjectionExpression: 'ImageKey, ThumbnailUrl',
       },
     },
