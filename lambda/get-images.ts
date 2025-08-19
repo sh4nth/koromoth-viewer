@@ -12,15 +12,31 @@ const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const IMAGE_TAGS_TABLE_NAME = process.env.IMAGE_TAGS_TABLE_NAME;
 const TAG_IMAGES_TABLE_NAME = process.env.TAG_IMAGES_TABLE_NAME;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+
+interface ImageKeysResult {
+  imageKeys: string[];
+  nextCursor: string | null;
+}
 
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   try {
     const tags = event.multiValueQueryStringParameters?.tag;
+    const nextToken = event.queryStringParameters?.nextToken;
+
+    let pageSize = DEFAULT_PAGE_SIZE;
+    if (event.queryStringParameters?.pageSize) {
+      const requestedSize = parseInt(event.queryStringParameters.pageSize, 10);
+      if (!isNaN(requestedSize) && requestedSize > 0) {
+        pageSize = Math.min(requestedSize, MAX_PAGE_SIZE);
+      }
+    }
 
     if (tags) {
-      return getImagesByTags(tags);
+      return getImagesByTags(tags, pageSize, nextToken);
     } else {
       return listAllImages();
     }
@@ -29,20 +45,44 @@ export const handler = async (
   }
 };
 
-const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> => {
-  // 1. Query the inverted index to get image keys for each tag
+async function getImageKeys(
+  tags: string[],
+  startKey: string | undefined,
+  pageSize: number,
+): Promise<ImageKeysResult> {
+  // 1. Query each tag for its list of images, starting from the cursor.
   const queryPromises = tags.map((tag) => {
     const queryCommand = new QueryCommand({
       TableName: TAG_IMAGES_TABLE_NAME,
       KeyConditionExpression: 'Tag = :t',
       ExpressionAttributeValues: { ':t': tag },
+      Limit: pageSize,
+      ExclusiveStartKey: startKey ? { Tag: tag, ImageKey: startKey } : undefined,
     });
     return ddbDocClient.send(queryCommand);
   });
 
   const queryResults = await Promise.all(queryPromises);
 
-  // 2. Find the intersection of image keys
+  // 2. Determine the cursor for the *next* page.
+  const lastKeys: string[] = [];
+  let allQueriesHaveMoreResults = true;
+
+  for (const result of queryResults) {
+    if (result.LastEvaluatedKey?.ImageKey) {
+      lastKeys.push(result.LastEvaluatedKey.ImageKey);
+    } else {
+      allQueriesHaveMoreResults = false;
+      break;
+    }
+  }
+
+  let nextCursor: string | null = null;
+  if (allQueriesHaveMoreResults && lastKeys.length > 0) {
+    nextCursor = lastKeys.reduce((min, current) => (current < min ? current : min));
+  }
+
+  // 3. Calculate the intersection of image keys for the current page.
   const imageKeySets = queryResults.map(
     (result) => new Set(result.Items ? result.Items.map((item) => item.ImageKey) : []),
   );
@@ -55,16 +95,29 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
         )
       : new Set();
 
-  const imageKeys = [...intersection];
+  return {
+    imageKeys: [...intersection],
+    nextCursor,
+  };
+}
+
+const getImagesByTags = async (
+  tags: string[],
+  pageSize: number,
+  nextToken?: string,
+): Promise<APIGatewayProxyResult> => {
+  const startKey = nextToken
+    ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'))
+    : undefined;
+
+  const { imageKeys, nextCursor } = await getImageKeys(tags, startKey, pageSize);
+
+  const nextPageToken = Buffer.from(JSON.stringify(nextCursor)).toString('base64');
 
   if (imageKeys.length === 0) {
-    return ApiResponse.success({
-      tags: tags,
-      images: [],
-    });
+    return ApiResponse.success({ images: [], nextPageToken });
   }
 
-  // 3. Fetch the ThumbnailUrl for each image key from the main table
   const batchGetCommand = new BatchGetCommand({
     RequestItems: {
       [IMAGE_TAGS_TABLE_NAME as string]: {
@@ -77,10 +130,7 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
   const { Responses } = await ddbDocClient.send(batchGetCommand);
   const images = Responses ? Responses[IMAGE_TAGS_TABLE_NAME as string] : [];
 
-  return ApiResponse.success({
-    tags: tags,
-    images: images,
-  });
+  return ApiResponse.success({ tags, images, nextPageToken });
 };
 
 const listAllImages = async (): Promise<APIGatewayProxyResult> => {
