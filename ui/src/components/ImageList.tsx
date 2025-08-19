@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -14,7 +14,7 @@ const ImageList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tagInput, setTagInput] = useState("");
 
-  const activeTags = searchParams.getAll("tag");
+  const activeTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -31,17 +31,7 @@ const ImageList = () => {
           throw new Error("Failed to fetch image list");
         }
         const data = await response.json();
-        // The backend returns different shapes depending on the query
-        if (data.images) {
-          setImages(data.images);
-        } else if (data.imageKeys) {
-          // If we get back keys, we need to fetch thumbnails individually
-          // This is a placeholder for a more robust implementation
-          console.warn("Received imageKeys, but UI doesn't handle individual thumbnail fetching yet.");
-          setImages([]); // Or implement individual fetching
-        } else {
-          setImages([]);
-        }
+        setImages(data.images || []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "An unknown error occurred",
@@ -52,11 +42,14 @@ const ImageList = () => {
     fetchImages();
     // Set the input field to reflect the current URL state
     setTagInput(activeTags.join(", "));
-  }, [searchParams]); // Re-run effect when searchParams change
+  }, [activeTags]); // Re-run effect when activeTags change
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
-    const newTags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+    const newTags = tagInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     if (newTags.length > 0) {
       setSearchParams({ tag: newTags });
     } else {
@@ -73,7 +66,7 @@ const ImageList = () => {
       {/* Main Content Area */}
       <div className="flex-grow-1 p-4">
         <h1 className="mb-4">Image Gallery</h1>
-        
+
         {/* Filter Form */}
         <form onSubmit={handleFilter} className="mb-4">
           <div className="input-group">
@@ -84,7 +77,9 @@ const ImageList = () => {
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
             />
-            <button className="btn btn-primary" type="submit">Filter</button>
+            <button className="btn btn-primary" type="submit">
+              Filter
+            </button>
           </div>
         </form>
 
@@ -98,7 +93,11 @@ const ImageList = () => {
                     src={image.ThumbnailUrl}
                     className="card-img-top"
                     alt={image.ImageKey}
-                    style={{ width: "200px", height: "200px", objectFit: "cover" }}
+                    style={{
+                      width: "200px",
+                      height: "200px",
+                      objectFit: "cover",
+                    }}
                   />
                 </Link>
                 <div className="card-body">

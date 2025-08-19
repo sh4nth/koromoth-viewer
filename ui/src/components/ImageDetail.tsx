@@ -39,7 +39,7 @@ const ImageDetail = () => {
         const urlData = await urlResponse.json();
         setImageUrl(urlData.imageUrl);
 
-	// 2. Fetch the image data itself to parse EXIF info
+        // 2. Fetch the image data itself to parse EXIF info
         // The browser will likely cache this request.
         const imageBlobResponse = await fetch(urlData.imageUrl);
         if (!imageBlobResponse.ok) {
@@ -50,7 +50,9 @@ const ImageDetail = () => {
         setExif(parsedExif);
 
         // 3. Fetch the tags for the image
-        const tagsResponse = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`);
+        const tagsResponse = await fetch(
+          `${API_BASE_URL}/image/${imageKey}/tags`,
+        );
         if (!tagsResponse.ok) {
           throw new Error("Failed to fetch tags");
         }
@@ -120,13 +122,42 @@ const ImageDetail = () => {
           <h5>Details</h5>
           {exif ? (
             <ul className="list-unstyled">
-              {exif.Make && <li><strong>Make:</strong> {exif.Make}</li>}
-              {exif.Model && <li><strong>Model:</strong> {exif.Model}</li>}
-              {exif.ExposureTime && <li><strong>Exposure:</strong> {exif.ExposureTime.toFixed(4)}s</li>}
-              {exif.FNumber && <li><strong>Aperture:</strong> f/{exif.FNumber}</li>}
-              {exif.ISO && <li><strong>ISO:</strong> {exif.ISO}</li>}
-              {exif.LensModel && <li><strong>Lens:</strong> {exif.LensModel}</li>}
-              {exif.DateTimeOriginal && <li><strong>Taken:</strong> {exif.DateTimeOriginal.toLocaleString()}</li>}
+              {exif.Make && (
+                <li>
+                  <strong>Make:</strong> {exif.Make}
+                </li>
+              )}
+              {exif.Model && (
+                <li>
+                  <strong>Model:</strong> {exif.Model}
+                </li>
+              )}
+              {exif.ExposureTime && (
+                <li>
+                  <strong>Exposure:</strong> {exif.ExposureTime.toFixed(4)}s
+                </li>
+              )}
+              {exif.FNumber && (
+                <li>
+                  <strong>Aperture:</strong> f/{exif.FNumber}
+                </li>
+              )}
+              {exif.ISO && (
+                <li>
+                  <strong>ISO:</strong> {exif.ISO}
+                </li>
+              )}
+              {exif.LensModel && (
+                <li>
+                  <strong>Lens:</strong> {exif.LensModel}
+                </li>
+              )}
+              {exif.DateTimeOriginal && (
+                <li>
+                  <strong>Taken:</strong>{" "}
+                  {exif.DateTimeOriginal.toLocaleString()}
+                </li>
+              )}
             </ul>
           ) : (
             <p>Loading EXIF data...</p>

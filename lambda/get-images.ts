@@ -3,6 +3,7 @@ import {
   DynamoDBDocumentClient,
   ScanCommand,
   QueryCommand,
+  BatchGetCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ApiResponse } from './utils/response.js';
@@ -29,7 +30,7 @@ export const handler = async (
 };
 
 const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> => {
-  // This logic remains the same, as it queries the inverted index table
+  // 1. Query the inverted index to get image keys for each tag
   const queryPromises = tags.map((tag) => {
     const queryCommand = new QueryCommand({
       TableName: TAG_IMAGES_TABLE_NAME,
@@ -41,22 +42,48 @@ const getImagesByTags = async (tags: string[]): Promise<APIGatewayProxyResult> =
 
   const queryResults = await Promise.all(queryPromises);
 
+  // 2. Find the intersection of image keys
   const imageKeySets = queryResults.map(
     (result) => new Set(result.Items ? result.Items.map((item) => item.ImageKey) : []),
   );
 
-  const intersection = imageKeySets.reduce((acc, currentSet) => {
-    return new Set([...acc].filter((imageKey) => currentSet.has(imageKey)));
+  const intersection =
+    imageKeySets.length > 0
+      ? imageKeySets.reduce(
+          (acc, currentSet) =>
+            new Set([...acc].filter((imageKey) => currentSet.has(imageKey))),
+        )
+      : new Set();
+
+  const imageKeys = [...intersection];
+
+  if (imageKeys.length === 0) {
+    return ApiResponse.success({
+      tags: tags,
+      images: [],
+    });
+  }
+
+  // 3. Fetch the ThumbnailUrl for each image key from the main table
+  const batchGetCommand = new BatchGetCommand({
+    RequestItems: {
+      [IMAGE_TAGS_TABLE_NAME as string]: {
+        Keys: imageKeys.map((key) => ({ ImageKey: key })),
+        ProjectionExpression: 'ImageKey, ThumbnailUrl',
+      },
+    },
   });
+
+  const { Responses } = await ddbDocClient.send(batchGetCommand);
+  const images = Responses ? Responses[IMAGE_TAGS_TABLE_NAME as string] : [];
 
   return ApiResponse.success({
     tags: tags,
-    imageKeys: [...intersection],
+    images: images,
   });
 };
 
 const listAllImages = async (): Promise<APIGatewayProxyResult> => {
-  // New logic: Scan the ImageTagsTable to get all image data
   const scanCommand = new ScanCommand({
     TableName: IMAGE_TAGS_TABLE_NAME,
     ProjectionExpression: 'ImageKey, ThumbnailUrl',
