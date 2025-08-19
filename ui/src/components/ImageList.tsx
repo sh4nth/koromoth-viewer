@@ -39,9 +39,9 @@ const ImageList = () => {
   return (
     <div>
       <h1 className="mb-4">Image Gallery</h1>
-      <div className="row">
+      <div className="d-flex flex-wrap">
         {images.map((image) => (
-          <div key={image.ImageKey} className="col-md-4 mb-4">
+          <div key={image.ImageKey} className="m-2">
             <div className="card" style={{ display: "inline-block" }}>
               <Link to={`/image/${encodeURIComponent(image.ImageKey)}`}>
                 <img
