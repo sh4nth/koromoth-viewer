@@ -70,21 +70,19 @@ async function getImageKeys(
   const queryResults = await Promise.all(queryPromises);
 
   // 2. Determine the cursor for the *next* page.
-  const lastKeys: string[] = [];
-  let allQueriesHaveMoreResults = true;
+  let nextCursor: string | null = null;
 
   for (const result of queryResults) {
-    if (result.LastEvaluatedKey?.ImageKey) {
-      lastKeys.push(result.LastEvaluatedKey.ImageKey);
-    } else {
-      allQueriesHaveMoreResults = false;
+    const thisTagsCursor = result.LastEvaluatedKey?.ImageKey;
+    if (thisTagsCursor) {
+      if (!nextCursor || thisTagsCursor < nextCursor) {
+        nextCursor = thisTagsCursor;
+      }
+    }
+    if (!result.Items || result.Items?.length == 0) {
+      nextCursor = null;
       break;
     }
-  }
-
-  let nextCursor: string | null = null;
-  if (allQueriesHaveMoreResults && lastKeys.length > 0) {
-    nextCursor = lastKeys.reduce((min, current) => (current < min ? current : min));
   }
 
   // 3. Calculate the intersection of image keys for the current page.
@@ -111,15 +109,13 @@ const getImagesByTags = async (
   pageSize: number,
   nextPageToken?: string,
 ): Promise<APIGatewayProxyResult> => {
-  let nextCursor = nextPageToken
-    ? JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'))
-    : undefined;
+  let nextCursor = decodeNextPageToken(nextPageToken);
   const allImageKeys: string[] = [];
 
   while (allImageKeys.length < pageSize) {
     const result = await getImageKeys(tags, nextCursor, pageSize);
     allImageKeys.push(...result.imageKeys);
-    nextCursor = result.nextCursor;
+    nextCursor = result.nextCursor ?? undefined;
 
     if (!nextCursor) {
       // No more items to fetch from the source
@@ -134,9 +130,7 @@ const getImagesByTags = async (
     nextCursor = allImageKeys[pageSize - 1];
   }
 
-  const finalNextPageToken = nextCursor
-    ? Buffer.from(JSON.stringify(nextCursor)).toString('base64')
-    : null;
+  const finalNextPageToken = encodeNextPageToken(nextCursor);
 
   if (finalImageKeys.length === 0) {
     return ApiResponse.success({ images: [], nextPageToken: finalNextPageToken });
@@ -164,25 +158,35 @@ const listAllImages = async (
   pageSize: number,
   nextPageToken?: string,
 ): Promise<APIGatewayProxyResult> => {
-  const startKey = nextPageToken
-    ? JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'))
-    : undefined;
+  const startKey = decodeNextPageToken(nextPageToken);
 
   const queryCommand = new QueryCommand({
     TableName: IMAGE_TAGS_TABLE_NAME,
     ProjectionExpression: 'ImageKey, ThumbnailUrl',
     Limit: pageSize,
-    ExclusiveStartKey: startKey,
+    ExclusiveStartKey: !startKey ? undefined : { ImageKey: startKey },
   });
 
   const { Items, LastEvaluatedKey } = await ddbDocClient.send(queryCommand);
 
-  const finalNextPageToken = LastEvaluatedKey
-    ? Buffer.from(JSON.stringify(LastEvaluatedKey)).toString('base64')
-    : null;
+  const finalNextPageToken = encodeNextPageToken(LastEvaluatedKey?.ImageKey);
 
   return ApiResponse.success({
     images: Items || [],
     nextPageToken: finalNextPageToken,
   });
 };
+
+export function encodeNextPageToken(imageKeyCursor?: string): string | undefined {
+  if (!imageKeyCursor) {
+    return undefined;
+  }
+  return Buffer.from(JSON.stringify(imageKeyCursor)).toString('base64');
+}
+
+export function decodeNextPageToken(nextPageToken?: string): string | undefined {
+  if (!nextPageToken) {
+    return undefined;
+  }
+  return JSON.parse(Buffer.from(nextPageToken, 'base64').toString('utf-8'));
+}
