@@ -42,13 +42,13 @@ const ImageList = () => {
       <div className="row">
         {images.map((image) => (
           <div key={image.ImageKey} className="col-md-4 mb-4">
-            <div className="card">
+            <div className="card" style={{ display: "inline-block" }}>
               <Link to={`/image/${encodeURIComponent(image.ImageKey)}`}>
                 <img
                   src={image.ThumbnailUrl}
                   className="card-img-top"
                   alt={image.ImageKey}
-                  style={{ height: "200px", objectFit: "cover" }}
+                  style={{ width: "200px", height: "200px", objectFit: "cover" }}
                 />
               </Link>
               <div className="card-body">
