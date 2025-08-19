@@ -3,6 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { S3Client } from '@aws-sdk/client-s3';
 import {
   DynamoDBDocumentClient,
+  BatchGetCommand,
   QueryCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -62,6 +63,16 @@ describe('get-images handler', () => {
         Items: [{ ImageKey: 'photo2.jpg' }, { ImageKey: 'photo3.jpg' }],
       });
 
+    const mockImageData = {
+      ImageKey: 'photo2.jpg',
+      ThumbnailUrl: 'http://example.com/thumb2.jpg',
+    };
+    ddbMock.on(BatchGetCommand).resolves({
+      Responses: {
+        [process.env.IMAGE_TAGS_TABLE_NAME as string]: [mockImageData],
+      },
+    });
+
     const event: Partial<APIGatewayProxyEvent> = {
       multiValueQueryStringParameters: {
         tag: ['sunset', 'beach'],
@@ -74,9 +85,7 @@ describe('get-images handler', () => {
     // Assert: Check the result
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    // The result should be the intersection of the two sets: ['photo2.jpg']
-    expect(body.imageKeys).toEqual(['photo2.jpg']);
-    expect(body.tags).toEqual(['sunset', 'beach']);
+    expect(body.images).toEqual([mockImageData]);
   });
 
   it('should return an empty array if no images match all tags', async () => {
@@ -109,6 +118,6 @@ describe('get-images handler', () => {
     // Assert
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.imageKeys).toEqual([]);
+    expect(body.images).toEqual([]);
   });
 });
