@@ -1,6 +1,5 @@
 import { handler } from '../get-images.js';
 import { mockClient } from 'aws-sdk-client-mock';
-import { S3Client } from '@aws-sdk/client-s3';
 import {
   DynamoDBDocumentClient,
   BatchGetCommand,
@@ -8,69 +7,32 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-// Mock the AWS SDK clients
-const s3Mock = mockClient(S3Client);
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
 describe('get-images handler', () => {
   beforeEach(() => {
-    // Reset mocks before each test
-    s3Mock.reset();
     ddbMock.reset();
   });
 
   it('should list all images when no tags are provided', async () => {
-    // Arrange: Mock the DynamoDB ScanCommand
-    const mockImages = [
-      { ImageKey: 'image1.jpg', ThumbnailUrl: 'http://example.com/thumb1.jpg' },
-      { ImageKey: 'image2.png', ThumbnailUrl: 'http://example.com/thumb2.png' },
-    ];
-    ddbMock.on(QueryCommand).resolves({ Items: mockImages });
+    const mockImages = [mockImage('image1.jpg'), mockImage('image2.png')];
+    mockImageThumbnailProjection(ddbMock, mockImages);
 
-    const event: Partial<APIGatewayProxyEvent> = {
-      multiValueQueryStringParameters: {}, // No tags
-    };
-
-    // Act: Call the handler
+    const event: Partial<APIGatewayProxyEvent> = {};
     const result = await handler(event as APIGatewayProxyEvent);
 
-    // Assert: Check the result
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.images).toEqual(mockImages);
   });
 
   it('should return the intersection of images when multiple tags are provided', async () => {
-    // Arrange: Mock the DynamoDB QueryCommand for each tag
-    ddbMock
-      .on(QueryCommand, {
-        TableName: process.env.TAG_IMAGES_TABLE_NAME,
-        KeyConditionExpression: 'Tag = :t',
-        ExpressionAttributeValues: { ':t': 'sunset' },
-      })
-      .resolves({
-        Items: [{ ImageKey: 'photo1.jpg' }, { ImageKey: 'photo2.jpg' }],
-      });
+    // Arrange
+    mockTagQueryResults(ddbMock, 'sunset', ['only-sunset.jpg', 'beach-sunset.jpg']);
+    mockTagQueryResults(ddbMock, 'beach', ['beach-sunset.jpg', 'only-beach.jpg']);
 
-    ddbMock
-      .on(QueryCommand, {
-        TableName: process.env.TAG_IMAGES_TABLE_NAME,
-        KeyConditionExpression: 'Tag = :t',
-        ExpressionAttributeValues: { ':t': 'beach' },
-      })
-      .resolves({
-        Items: [{ ImageKey: 'photo2.jpg' }, { ImageKey: 'photo3.jpg' }],
-      });
-
-    const mockImageData = {
-      ImageKey: 'photo2.jpg',
-      ThumbnailUrl: 'http://example.com/thumb2.jpg',
-    };
-    ddbMock.on(BatchGetCommand).resolves({
-      Responses: {
-        [process.env.IMAGE_TAGS_TABLE_NAME as string]: [mockImageData],
-      },
-    });
+    const mockImageData = mockImage('beach-sunset.jpg');
+    mockImageThumbnailBatchGet(ddbMock, [mockImageData]);
 
     const event: Partial<APIGatewayProxyEvent> = {
       multiValueQueryStringParameters: {
@@ -78,10 +40,8 @@ describe('get-images handler', () => {
       },
     };
 
-    // Act: Call the handler
     const result = await handler(event as APIGatewayProxyEvent);
 
-    // Assert: Check the result
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.images).toEqual([mockImageData]);
@@ -89,21 +49,9 @@ describe('get-images handler', () => {
 
   it('should return an empty array if no images match all tags', async () => {
     // Arrange
-    ddbMock
-      .on(QueryCommand, {
-        ExpressionAttributeValues: { ':t': 'sunset' },
-      })
-      .resolves({
-        Items: [{ ImageKey: 'photo1.jpg' }],
-      });
-
-    ddbMock
-      .on(QueryCommand, {
-        ExpressionAttributeValues: { ':t': 'mountain' },
-      })
-      .resolves({
-        Items: [{ ImageKey: 'photo2.jpg' }],
-      });
+    mockTagQueryResults(ddbMock, 'sunset', ['photo1.jpg']);
+    mockTagQueryResults(ddbMock, 'mountain', ['photo2.jpg']);
+    mockImageThumbnailBatchGet(ddbMock, []); // BatchGet will be called with no keys
 
     const event: Partial<APIGatewayProxyEvent> = {
       multiValueQueryStringParameters: {
@@ -111,12 +59,53 @@ describe('get-images handler', () => {
       },
     };
 
-    // Act
     const result = await handler(event as APIGatewayProxyEvent);
 
-    // Assert
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
     expect(body.images).toEqual([]);
   });
 });
+
+// ##############################################################################
+// # Helper Functions
+// ##############################################################################
+
+const mockImage = (name: string) => ({
+  ImageKey: name,
+  ThumbnailUrl: `https://thumbnails-r-us.com/${name}`,
+});
+
+const mockTagQueryResults = (
+  mock: typeof ddbMock,
+  tag: string,
+  imageKeys: string[],
+) => {
+  mock
+    .on(QueryCommand, {
+      TableName: process.env.TAG_IMAGES_TABLE_NAME,
+      KeyConditionExpression: 'Tag = :t',
+      ExpressionAttributeValues: { ':t': tag },
+    })
+    .resolves({
+      Items: imageKeys.map((key) => ({ ImageKey: key })),
+    });
+};
+
+const mockImageThumbnailBatchGet = (
+  mock: typeof ddbMock,
+  images: { ImageKey: string; ThumbnailUrl: string }[],
+) => {
+  mock.on(BatchGetCommand).resolves({
+    Responses: {
+      [process.env.IMAGE_TAGS_TABLE_NAME as string]: images,
+    },
+  });
+};
+
+const mockImageThumbnailProjection = (
+  mock: typeof ddbMock,
+  images: { ImageKey: string; ThumbnailUrl: string }[],
+) => {
+  mock.on(QueryCommand).resolves({ Items: images });
+};
