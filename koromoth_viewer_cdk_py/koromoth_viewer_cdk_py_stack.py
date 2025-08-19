@@ -165,6 +165,10 @@ class KoromothViewerCdkPyStack(Stack):
             "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
             description="Serves presigned URLs for images from S3",
+            default_cors_preflight_options=apigw.CorsOptions(
+                allow_origins=["http://localhost:5173"],
+                allow_methods=apigw.Cors.ALL_METHODS,
+            ),
         )
 
         # --- API Gateway Resources ---
