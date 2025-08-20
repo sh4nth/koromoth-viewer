@@ -162,9 +162,16 @@ const listAllImages = async (
 
   const queryCommand = new QueryCommand({
     TableName: IMAGE_TAGS_TABLE_NAME,
+    IndexName: 'AllImagesIndex', // Target the GSI
+    KeyConditionExpression: 'GSI1PK = :gsi1pk',
+    ExpressionAttributeValues: {
+      ':gsi1pk': 'ALL_IMAGES',
+    },
     ProjectionExpression: 'ImageKey, ThumbnailUrl',
     Limit: pageSize,
-    ExclusiveStartKey: !startKey ? undefined : { ImageKey: startKey },
+    ExclusiveStartKey: startKey
+      ? { GSI1PK: 'ALL_IMAGES', ImageKey: startKey }
+      : undefined,
   });
 
   const { Items, LastEvaluatedKey } = await ddbDocClient.send(queryCommand);

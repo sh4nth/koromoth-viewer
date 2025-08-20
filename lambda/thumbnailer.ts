@@ -58,9 +58,10 @@ export const handler = async (event: S3Event): Promise<void> => {
       const updateCommand = new UpdateCommand({
         TableName: IMAGE_TAGS_TABLE_NAME,
         Key: { ImageKey: imageKey },
-        UpdateExpression: 'SET ThumbnailUrl = :url',
+        UpdateExpression: 'SET ThumbnailUrl = :url, GSI1PK = :gsi1pk',
         ExpressionAttributeValues: {
           ':url': thumbnailUrl,
+          ':gsi1pk': 'ALL_IMAGES',
         },
       });
       await ddbDocClient.send(updateCommand);

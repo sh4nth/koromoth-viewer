@@ -59,6 +59,17 @@ class KoromothViewerCdkPyStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.DESTROY,
         )
+        image_tags_table.add_global_secondary_index(
+            index_name="AllImagesIndex",
+            partition_key=dynamodb.Attribute(
+                name="GSI1PK", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="ImageKey", type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.INCLUDE,
+            non_key_attributes=["ThumbnailUrl"],
+        )
 
         tag_images_table = dynamodb.Table(
             self,
@@ -165,6 +176,10 @@ class KoromothViewerCdkPyStack(Stack):
             "KoromothViewerApi",
             rest_api_name="Koromoth Viewer Backend API",
             description="Serves presigned URLs for images from S3",
+            default_cors_preflight_options=apigw.CorsOptions(
+                allow_origins=["http://localhost:5173"],
+                allow_methods=apigw.Cors.ALL_METHODS,
+            ),
         )
 
         # --- API Gateway Resources ---

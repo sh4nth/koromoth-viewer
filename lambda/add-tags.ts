@@ -34,8 +34,9 @@ export const handler = async (
     const updateImageTagsCommand = new UpdateCommand({
       TableName: IMAGE_TAGS_TABLE_NAME,
       Key: { ImageKey: imageKey },
-      UpdateExpression: 'ADD Tags :t',
+      UpdateExpression: 'SET GSI1PK = :gsi1pk ADD Tags :t',
       ExpressionAttributeValues: {
+        ':gsi1pk': 'ALL_IMAGES',
         ':t': new Set(tags),
       },
     });
