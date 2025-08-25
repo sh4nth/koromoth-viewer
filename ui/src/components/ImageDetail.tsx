@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
-import { BsPencil, BsSave, BsX } from "react-icons/bs";
+import { BsPencil, BsCheck, BsX } from "react-icons/bs";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -181,10 +181,13 @@ const ImageDetail = () => {
 
         {/* Tags Section */}
         <div className="mb-4">
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h5>Tags</h5>
+          <div className="d-flex align-items-center mb-2">
+            <h5 className="mb-0 me-2">Tags</h5>
             {!isEditing ? (
-              <button className="btn btn-sm btn-outline-primary" onClick={handleEditClick}>
+              <button
+                className="btn btn-sm btn-link text-primary"
+                onClick={handleEditClick}
+              >
                 <BsPencil />
               </button>
             ) : (
@@ -194,10 +197,10 @@ const ImageDetail = () => {
                   onClick={handleSaveClick}
                   disabled={isSaving}
                 >
-                  {isSaving ? "Saving..." : <BsSave />}
+                  {isSaving ? "Saving..." : <BsCheck />}
                 </button>
                 <button
-                  className="btn btn-sm btn-outline-secondary"
+                  className="btn btn-sm btn-link text-secondary"
                   onClick={handleCancelClick}
                   disabled={isSaving}
                 >
