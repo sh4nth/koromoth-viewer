@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
-import { BsPencil, BsCheck, BsX } from "react-icons/bs";
+import { BsPencil, BsCheck, BsX, BsSearch } from "react-icons/bs";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -236,7 +236,18 @@ const ImageDetail = () => {
             )}
           </div>
           {displayedTags.length > 0 ? (
-            <div>
+            <div className="d-flex flex-wrap align-items-center">
+              {!isEditing && (
+                <Link
+                  to={`/?${new URLSearchParams(
+                    tags.map((t) => ["tag", t]),
+                  ).toString()}`}
+                  className="badge bg-info me-1 text-decoration-none"
+                  title="Find images with the same tags"
+                >
+                  <BsSearch />
+                </Link>
+              )}
               {displayedTags.map((tag) =>
                 isEditing ? (
                   <span
@@ -245,8 +256,8 @@ const ImageDetail = () => {
                       tagsToDelete.has(tag)
                         ? "bg-danger text-decoration-line-through"
                         : tagsToAdd.has(tag)
-                          ? "bg-success"
-                          : "bg-secondary"
+                        ? "bg-success"
+                        : "bg-secondary"
                     }`}
                     onClick={() => handleExistingTagClick(tag)}
                     style={{ cursor: "pointer" }}
