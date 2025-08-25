@@ -4,11 +4,6 @@ import exifr from "exifr";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
-interface Tag {
-  Tag: string;
-  ImageKey: string;
-}
-
 interface ExifData {
   Make?: string;
   Model?: string;
@@ -26,11 +21,29 @@ const ImageDetail = () => {
   const [exif, setExif] = useState<ExifData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // State for tag editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [tagsToDelete, setTagsToDelete] = useState(new Set<string>());
+  const [tagsToAdd, setTagsToAdd] = useState(new Set<string>());
+  const [tagInput, setTagInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchTags = async () => {
+    if (!imageKey) return;
+    const tagsResponse = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`);
+    if (!tagsResponse.ok) {
+      throw new Error("Failed to fetch tags");
+    }
+    const tagsData = await tagsResponse.json();
+    setTags(tagsData.tags || []);
+  };
+
   useEffect(() => {
     if (!imageKey) return;
 
     const fetchImageDetails = async () => {
       try {
+        setError(null);
         // 1. Fetch the presigned URL for the image
         const urlResponse = await fetch(`${API_BASE_URL}/image/${imageKey}`);
         if (!urlResponse.ok) {
@@ -40,7 +53,6 @@ const ImageDetail = () => {
         setImageUrl(urlData.imageUrl);
 
         // 2. Fetch the image data itself to parse EXIF info
-        // The browser will likely cache this request.
         const imageBlobResponse = await fetch(urlData.imageUrl);
         if (!imageBlobResponse.ok) {
           throw new Error("Failed to download image for EXIF parsing");
@@ -50,14 +62,7 @@ const ImageDetail = () => {
         setExif(parsedExif);
 
         // 3. Fetch the tags for the image
-        const tagsResponse = await fetch(
-          `${API_BASE_URL}/image/${imageKey}/tags`,
-        );
-        if (!tagsResponse.ok) {
-          throw new Error("Failed to fetch tags");
-        }
-        const tagsData = await tagsResponse.json();
-        setTags(tagsData.tags || []);
+        await fetchTags();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "An unknown error occurred",
@@ -68,6 +73,76 @@ const ImageDetail = () => {
     fetchImageDetails();
   }, [imageKey]);
 
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setTagsToDelete(new Set());
+    setTagsToAdd(new Set());
+  };
+
+  const handleSaveClick = async () => {
+    if (!imageKey) return;
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      // Delete tags
+      if (tagsToDelete.size > 0) {
+        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: Array.from(tagsToDelete) }),
+        });
+        if (!res.ok) throw new Error("Failed to delete tags.");
+      }
+
+      // Add tags
+      if (tagsToAdd.size > 0) {
+        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: Array.from(tagsToAdd) }),
+        });
+        if (!res.ok) throw new Error("Failed to add tags.");
+      }
+
+      await fetchTags();
+      setIsEditing(false);
+      setTagsToAdd(new Set());
+      setTagsToDelete(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelClick = () => {
+    setIsEditing(false);
+  };
+
+  const handleExistingTagClick = (tag: string) => {
+    if (tagsToDelete.has(tag)) {
+      setTagsToDelete((prev) => {
+        const next = new Set(prev);
+        next.delete(tag);
+        return next;
+      });
+    } else {
+      setTagsToDelete((prev) => new Set(prev).add(tag));
+    }
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "," || e.key === "Enter") {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (newTag && !tags.includes(newTag)) {
+        setTagsToAdd((prev) => new Set(prev).add(newTag));
+      }
+      setTagInput("");
+    }
+  };
+
   if (error) {
     return <div className="alert alert-danger">Error: {error}</div>;
   }
@@ -75,6 +150,8 @@ const ImageDetail = () => {
   if (!imageUrl) {
     return <div>Loading...</div>;
   }
+
+  const displayedTags = [...tags, ...tagsToAdd];
 
   return (
     <div className="d-flex" style={{ height: "100vh" }}>
@@ -103,17 +180,72 @@ const ImageDetail = () => {
 
         {/* Tags Section */}
         <div className="mb-4">
-          <h5>Tags</h5>
-          {tags.length > 0 ? (
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h5>Tags</h5>
+            {!isEditing ? (
+              <button className="btn btn-sm btn-outline-primary" onClick={handleEditClick}>
+                Edit
+              </button>
+            ) : (
+              <div>
+                <button
+                  className="btn btn-sm btn-success me-2"
+                  onClick={handleSaveClick}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={handleCancelClick}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          {displayedTags.length > 0 ? (
             <div>
-              {tags.map((tag) => (
-                <Link to={`/?tag=${tag}`} key={tag} className="badge bg-primary me-1 text-decoration-none">
-                  {tag}
-                </Link>
-              ))}
+              {displayedTags.map((tag) =>
+                isEditing ? (
+                  <span
+                    key={tag}
+                    className={`badge me-1 ${
+                      tagsToDelete.has(tag)
+                        ? "bg-danger text-decoration-line-through"
+                        : tagsToAdd.has(tag)
+                          ? "bg-success"
+                          : "bg-secondary"
+                    }`}
+                    onClick={() => handleExistingTagClick(tag)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {tag}
+                  </span>
+                ) : (
+                  <Link
+                    to={`/?tag=${tag}`}
+                    key={tag}
+                    className="badge bg-primary me-1 text-decoration-none"
+                  >
+                    {tag}
+                  </Link>
+                ),
+              )}
             </div>
           ) : (
             <p>No tags assigned.</p>
+          )}
+          {isEditing && (
+            <input
+              type="text"
+              className="form-control form-control-sm mt-2"
+              placeholder="Add a tag..."
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagInputKeyDown}
+            />
           )}
         </div>
 
