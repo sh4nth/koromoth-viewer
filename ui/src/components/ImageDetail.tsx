@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
 import { BsPencil, BsCheck, BsX } from "react-icons/bs";
@@ -28,6 +28,13 @@ const ImageDetail = () => {
   const [tagsToAdd, setTagsToAdd] = useState(new Set<string>());
   const [tagInput, setTagInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      tagInputRef.current?.focus();
+    }
+  }, [isEditing]);
 
   const fetchTags = async () => {
     if (!imageKey) return;
@@ -80,28 +87,31 @@ const ImageDetail = () => {
     setTagsToAdd(new Set());
   };
 
-  const handleSaveClick = async () => {
+  const performSave = async (
+    tagsToAddSet: Set<string>,
+    tagsToDeleteSet: Set<string>,
+  ) => {
     if (!imageKey) return;
     setIsSaving(true);
     setError(null);
 
     try {
       // Delete tags
-      if (tagsToDelete.size > 0) {
+      if (tagsToDeleteSet.size > 0) {
         const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags: Array.from(tagsToDelete) }),
+          body: JSON.stringify({ tags: Array.from(tagsToDeleteSet) }),
         });
         if (!res.ok) throw new Error("Failed to delete tags.");
       }
 
       // Add tags
-      if (tagsToAdd.size > 0) {
+      if (tagsToAddSet.size > 0) {
         const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tags: Array.from(tagsToAdd) }),
+          body: JSON.stringify({ tags: Array.from(tagsToAddSet) }),
         });
         if (!res.ok) throw new Error("Failed to add tags.");
       }
@@ -115,6 +125,10 @@ const ImageDetail = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSaveClick = () => {
+    performSave(tagsToAdd, tagsToDelete);
   };
 
   const handleCancelClick = () => {
@@ -134,12 +148,24 @@ const ImageDetail = () => {
   };
 
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "," || e.key === "Enter") {
+    const newTag = tagInput.trim();
+
+    if (e.key === ",") {
       e.preventDefault();
-      const newTag = tagInput.trim();
       if (newTag && !tags.includes(newTag)) {
         setTagsToAdd((prev) => new Set(prev).add(newTag));
       }
+      setTagInput("");
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      let newTagsToAdd = tagsToAdd;
+      if (newTag && !tags.includes(newTag)) {
+        newTagsToAdd = new Set(tagsToAdd).add(newTag);
+        setTagsToAdd(newTagsToAdd);
+      }
+      performSave(newTagsToAdd, tagsToDelete);
       setTagInput("");
     }
   };
@@ -243,6 +269,7 @@ const ImageDetail = () => {
           )}
           {isEditing && (
             <input
+              ref={tagInputRef}
               type="text"
               className="form-control form-control-sm mt-2"
               placeholder="Add a tag..."
