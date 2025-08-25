@@ -107,9 +107,9 @@ const ImageDetail = () => {
           {tags.length > 0 ? (
             <div>
               {tags.map((tag) => (
-                <span key={tag} className="badge bg-primary me-1">
+                <Link to={`/?tag=${tag}`} key={tag} className="badge bg-primary me-1 text-decoration-none">
                   {tag}
-                </span>
+                </Link>
               ))}
             </div>
           ) : (
