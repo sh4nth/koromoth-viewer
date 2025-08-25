@@ -171,6 +171,19 @@ class KoromothViewerCdkPyStack(Stack):
         )
         image_tags_table.grant_read_data(get_tags_lambda)
 
+        delete_tags_lambda = nodejs.NodejsFunction(
+            self,
+            "DeleteTagsLambda",
+            entry="lambda/delete-tags.ts",
+            environment={
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+                "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
+            },
+            **common_nodejs_props,
+        )
+        image_tags_table.grant_write_data(delete_tags_lambda)
+        tag_images_table.grant_write_data(delete_tags_lambda)
+
         api = apigw.RestApi(
             self,
             "KoromothViewerApi",
@@ -197,6 +210,7 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags = image_key.add_resource("tags")
         image_tags.add_method("GET", apigw.LambdaIntegration(get_tags_lambda))
         image_tags.add_method("POST", apigw.LambdaIntegration(add_tags_lambda))
+        image_tags.add_method("DELETE", apigw.LambdaIntegration(delete_tags_lambda))
 
         # --- Frontend Hosting Resources ---
         no_ui_str = self.node.try_get_context("NoUi")
