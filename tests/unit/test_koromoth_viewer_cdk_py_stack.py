@@ -25,7 +25,7 @@ def template(stack):
 
 def test_dynamodb_tables_created(template):
     template.resource_count_is("AWS::DynamoDB::Table", 2)
-    assert_dynamodb_table(template, {"ImageKey": ("S", "HASH")})
+    assert_dynamodb_table(template, {"ImageKey": ("S", "HASH"), "GSI1PK": ("S", None)})
     assert_dynamodb_table(template, {"Tag": ("S", "HASH"), "ImageKey": ("S", "RANGE")})
 
 
@@ -33,6 +33,11 @@ def test_lambda_functions_created_with_correct_properties(template, stack):
     assert_lambda_environment(
         template,
         "GetImagesLambda",
+        ["IMAGE_TAGS_TABLE_NAME", "TAG_IMAGES_TABLE_NAME"],
+    )
+    assert_lambda_environment(
+        template,
+        "DeleteTagsLambda",
         ["IMAGE_TAGS_TABLE_NAME", "TAG_IMAGES_TABLE_NAME"],
     )
     assert_lambda_environment(
@@ -49,6 +54,14 @@ def test_lambda_functions_created_with_correct_properties(template, stack):
         "ThumbnailerLambda",
         ["THUMBNAIL_BUCKET_NAME", "IMAGE_TAGS_TABLE_NAME"],
     )
+    
+    # There are 3 CDK created lambdas: [
+    #  'CustomS3AutoDeleteObjectsCustomResourceProviderHandler',
+    #  'BucketNotificationsHandler',
+    #  'CustomCDKBucketDeployment'
+    #  ]
+    # in addition to the 6 we create explicitly.
+    template.resource_count_is("AWS::Lambda::Function", 9)
 
 
 def test_api_gateway_integrations(template, stack):
