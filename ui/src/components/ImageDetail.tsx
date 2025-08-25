@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
+import { BsPencil, BsSave, BsX } from "react-icons/bs";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -184,7 +185,7 @@ const ImageDetail = () => {
             <h5>Tags</h5>
             {!isEditing ? (
               <button className="btn btn-sm btn-outline-primary" onClick={handleEditClick}>
-                Edit
+                <BsPencil />
               </button>
             ) : (
               <div>
@@ -193,14 +194,14 @@ const ImageDetail = () => {
                   onClick={handleSaveClick}
                   disabled={isSaving}
                 >
-                  {isSaving ? "Saving..." : "Save"}
+                  {isSaving ? "Saving..." : <BsSave />}
                 </button>
                 <button
                   className="btn btn-sm btn-outline-secondary"
                   onClick={handleCancelClick}
                   disabled={isSaving}
                 >
-                  Cancel
+                  <BsX />
                 </button>
               </div>
             )}
