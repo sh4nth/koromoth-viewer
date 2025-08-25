@@ -67,22 +67,6 @@ const ImageList = () => {
       <div className="flex-grow-1 p-4">
         <h1 className="mb-4">Image Gallery</h1>
 
-        {/* Filter Form */}
-        <form onSubmit={handleFilter} className="mb-4">
-          <div className="input-group">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter tags, separated by commas"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-            />
-            <button className="btn btn-primary" type="submit">
-              Filter
-            </button>
-          </div>
-        </form>
-
         {/* Image Grid */}
         <div className="d-flex flex-wrap">
           {images.map((image) => (
@@ -114,11 +98,29 @@ const ImageList = () => {
         className="p-4 bg-light text-dark"
         style={{
           width: "300px",
+          minWidth: "300px",
           borderLeft: "1px solid #ccc",
           height: "100vh",
         }}
       >
-        <h5>Filtering by Tags</h5>
+        <h5 className="mb-3">Filter by Tags</h5>
+        {/* Filter Form */}
+        <form onSubmit={handleFilter} className="mb-4">
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="e.g. sunset, beach"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+            />
+            <button className="btn btn-primary" type="submit">
+              Filter
+            </button>
+          </div>
+        </form>
+
+        <h5 className="mb-3">Current Filter</h5>
         {activeTags.length > 0 ? (
           <div>
             {activeTags.map((tag, index) => (

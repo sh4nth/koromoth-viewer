@@ -27,3 +27,8 @@ All endpoints are namespaced under the `/api` prefix, which is configured in the
 
 - **Handler:** `add-tags.ts`
 - **Description:** Adds one or more tags to a specific image. The request body should be a JSON object with a `tags` array (e.g., `{"tags": ["new-tag", "another-tag"]}`). This function writes to both the `ImageTags` and `TagImages` DynamoDB tables.
+
+### `DELETE /api/image/{key}/tags`
+
+- **Handler:** `delete-tags.ts`
+- **Description:** Deletes one or more tags from a specific image. The request body should be a JSON object with a `tags` array (e.g., `{"tags": ["delete-this-tag", "another-one"]}`). This function removes data from both the `ImageTags` and `TagImages` DynamoDB tables.
