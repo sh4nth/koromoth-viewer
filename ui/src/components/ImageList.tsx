@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+import { apiFetch } from "../utils/api";
 
 interface Image {
   ImageKey: string;
@@ -19,14 +18,14 @@ const ImageList = () => {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        let url = `${API_BASE_URL}/images`;
+        let url = `/images`;
         if (activeTags.length > 0) {
           const query = new URLSearchParams();
           activeTags.forEach((tag) => query.append("tag", tag));
           url += `?${query.toString()}`;
         }
 
-        const response = await fetch(url);
+        const response = await apiFetch(url);
         if (!response.ok) {
           throw new Error("Failed to fetch image list");
         }

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
 import { BsPencil, BsCheck, BsX, BsSearch } from "react-icons/bs";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+import { apiFetch } from "../utils/api";
 
 interface ExifData {
   Make?: string;
@@ -38,7 +37,7 @@ const ImageDetail = () => {
 
   const fetchTags = async () => {
     if (!imageKey) return;
-    const tagsResponse = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`);
+    const tagsResponse = await apiFetch(`/image/${imageKey}/tags`);
     if (!tagsResponse.ok) {
       throw new Error("Failed to fetch tags");
     }
@@ -53,7 +52,7 @@ const ImageDetail = () => {
       try {
         setError(null);
         // 1. Fetch the presigned URL for the image
-        const urlResponse = await fetch(`${API_BASE_URL}/image/${imageKey}`);
+        const urlResponse = await apiFetch(`/image/${imageKey}`);
         if (!urlResponse.ok) {
           throw new Error("Failed to fetch image URL");
         }
@@ -98,7 +97,7 @@ const ImageDetail = () => {
     try {
       // Delete tags
       if (tagsToDeleteSet.size > 0) {
-        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+        const res = await apiFetch(`/image/${imageKey}/tags`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags: Array.from(tagsToDeleteSet) }),
@@ -108,7 +107,7 @@ const ImageDetail = () => {
 
       // Add tags
       if (tagsToAddSet.size > 0) {
-        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+        const res = await apiFetch(`/image/${imageKey}/tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags: Array.from(tagsToAddSet) }),
