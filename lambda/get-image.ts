@@ -2,6 +2,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ApiResponse } from './utils/response.js';
+import { getUserClaims } from './utils/auth.js';
 
 const s3Client = new S3Client({});
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -10,12 +11,11 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   try {
-    const claims = event.requestContext.authorizer?.claims;
-    const userId = claims?.sub;
-    const userEmail = claims?.email;
-
-    if (userId) {
-      console.log(`Request from authenticated user: ${userEmail} (${userId})`);
+    const claims = await getUserClaims(event);
+    if (claims) {
+      console.log(
+        `Request from authenticated user: ${claims.email} (${claims.sub})`,
+      );
     } else {
       console.log('Request from a guest user.');
     }

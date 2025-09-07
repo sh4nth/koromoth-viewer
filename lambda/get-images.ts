@@ -23,7 +23,6 @@ interface ImageKeysResult {
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
-  console.log("Received event:", JSON.stringify(event, null, 2));
   try {
     const claims = await getUserClaims(event);
     if (claims) {
