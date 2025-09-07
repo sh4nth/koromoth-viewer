@@ -4,6 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
 import App from "./App.tsx";
 import { Amplify } from "aws-amplify";
+import { Authenticator } from "@aws-amplify/ui-react";
 
 Amplify.configure({
   Auth: {
@@ -16,6 +17,8 @@ Amplify.configure({
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <Authenticator.Provider>
+      <App />
+    </Authenticator.Provider>
   </StrictMode>,
 );
