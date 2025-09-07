@@ -7,6 +7,7 @@ from aws_cdk import (
     aws_apigateway as apigw,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
+    aws_cognito as cognito,
     aws_dynamodb as dynamodb,
     aws_lambda as lambda_,
     aws_lambda_nodejs as nodejs,
@@ -27,6 +28,33 @@ class KoromothViewerCdkPyStack(Stack):
             "ExistingBucketName",
             type="String",
             description="The name of the existing S3 bucket where images are stored.",
+        )
+
+        # --- Cognito Resources ---
+        user_pool = cognito.UserPool(
+            self,
+            "KoromothUserPool",
+            user_pool_name="koromoth-viewer-user-pool",
+            self_sign_up_enabled=True,
+            sign_in_aliases=cognito.SignInAliases(email=True),
+            auto_verify=cognito.AutoVerifiedAttrs(email=True),
+            standard_attributes=cognito.StandardAttributes(
+                email=cognito.StandardAttribute(required=True, mutable=True)
+            ),
+            password_policy=cognito.PasswordPolicy(
+                min_length=8,
+                require_lowercase=True,
+                require_uppercase=True,
+                require_digits=True,
+                require_symbols=False,
+            ),
+            account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        user_pool_client = user_pool.add_client(
+            "KoromothAppClient",
+            auth_flows=cognito.AuthFlow(user_srp=True, user_password=True),
         )
 
         # --- Backend Resources ---
@@ -184,6 +212,13 @@ class KoromothViewerCdkPyStack(Stack):
         image_tags_table.grant_write_data(delete_tags_lambda)
         tag_images_table.grant_write_data(delete_tags_lambda)
 
+        authorizer = apigw.CognitoUserPoolsAuthorizer(
+            self,
+            "KoromothCognitoAuthorizer",
+            cognito_user_pools=[user_pool],
+            identity_source=apigw.IdentitySource.header("Authorization"),
+        )
+
         api = apigw.RestApi(
             self,
             "KoromothViewerApi",
@@ -192,6 +227,10 @@ class KoromothViewerCdkPyStack(Stack):
             default_cors_preflight_options=apigw.CorsOptions(
                 allow_origins=["http://localhost:5173"],
                 allow_methods=apigw.Cors.ALL_METHODS,
+            ),
+            default_method_options=apigw.MethodOptions(
+                authorization_type=apigw.AuthorizationType.COGNITO,
+                authorizer=authorizer,
             ),
         )
 
@@ -313,5 +352,17 @@ class KoromothViewerCdkPyStack(Stack):
             "TagImagesTableName",
             value=tag_images_table.table_name,
             description="The name of the DynamoDB table that serves as the inverted index for tags.",
+        )
+        CfnOutput(
+            self,
+            "UserPoolId",
+            value=user_pool.user_pool_id,
+            description="The ID of the Cognito User Pool.",
+        )
+        CfnOutput(
+            self,
+            "UserPoolClientId",
+            value=user_pool_client.user_pool_client_id,
+            description="The ID of the Cognito User Pool Client.",
         )
 
