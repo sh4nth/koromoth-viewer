@@ -54,7 +54,7 @@ def test_lambda_functions_created_with_correct_properties(template, stack):
         "ThumbnailerLambda",
         ["THUMBNAIL_BUCKET_NAME", "IMAGE_TAGS_TABLE_NAME"],
     )
-    
+
     # There are 3 CDK created lambdas: [
     #  'CustomS3AutoDeleteObjectsCustomResourceProviderHandler',
     #  'BucketNotificationsHandler',

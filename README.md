@@ -52,14 +52,20 @@ This project consists of a serverless backend and a React single-page applicatio
 
 ## Development
 
-To run the UI locally for development, first ensure the backend has been deployed.
+To run the UI locally for development, first ensure the backend has been deployed (see "Backend-Only Deployment" below).
 
-1.  **Start the Vite dev server:**
+1.  **Create a local environment file:** In the `ui` directory, create a file named `.env.local`. Add the configuration values from your backend deployment's output:
+    ```
+    VITE_USER_POOL_ID=...
+    VITE_USER_POOL_CLIENT_ID=...
+    VITE_API_URL=...
+    ```
+2.  **Start the Vite dev server:**
     ```bash
     cd ui
     npm run dev
     ```
-2.  Open your browser to the local address provided (e.g., `http://localhost:5173`).
+3.  Open your browser to the local address provided (e.g., `http://localhost:5173`).
 
 ## Testing
 
@@ -79,21 +85,37 @@ The project has two separate test suites.
 
 ## Deployment
 
-The entire stack (backend and frontend) can be deployed with a single command.
+The stack is deployed in two stages: first the backend, then the frontend. This is to inject the backend configuration into the frontend at build time without using Docker.
 
-1.  **Build the UI for production:**
+1.  **Deploy the Backend:**
+    Run the initial deployment from the project root. This will create all the AWS resources (Cognito, API Gateway, Lambdas, etc.).
+    ```bash
+    cdk deploy --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME> -c NoUi=true
+    ```
+    After the deployment finishes, note the outputs in your terminal, specifically `UserPoolId` and `UserPoolClientId`.
+
+2.  **Configure and Build the UI:**
+    In the `ui` directory, create a file named `.env.local` and populate it with the outputs from the previous step.
+    ```
+    # ui/.env.local
+    VITE_USER_POOL_ID=...
+    VITE_USER_POOL_CLIENT_ID=...
+    ```
+    Now, build the UI for production. Vite will automatically use the values from `.env.local`.
     ```bash
     # Run from the ui directory
     cd ui
     npm run build
     ```
-2.  **Deploy the Full Stack:**
+
+3.  **Deploy the Frontend:**
+    Run the deployment command again from the project root. The CDK will detect that the backend is unchanged and will only deploy the newly built UI assets from `ui/dist` to S3.
     ```bash
     # Run from the project root
     cd ..
     cdk deploy --parameters ExistingBucketName=<YOUR-IMAGE-S3-BUCKET-NAME>
     ```
-    After deployment, the CDK will output the `CloudFrontUrl`, which is the public URL for your web application.
+    After this deployment, the CDK will output the `CloudFrontUrl`, which is the public URL for your web application.
 
 ### Backend-Only Deployment (for Local UI Development)
 

@@ -23,6 +23,16 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   try {
+    const claims = event.requestContext.authorizer?.claims;
+    const userId = claims?.sub;
+    const userEmail = claims?.email;
+
+    if (userId) {
+      console.log(`Request from authenticated user: ${userEmail} (${userId})`);
+    } else {
+      console.log('Request from a guest user.');
+    }
+
     const tags = event.multiValueQueryStringParameters?.tag;
     const nextPageToken = event.queryStringParameters?.nextPageToken;
 

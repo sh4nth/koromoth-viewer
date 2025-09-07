@@ -18,7 +18,9 @@ describe('get-images handler', () => {
     const mockImages = [mockImage('image1.jpg'), mockImage('image2.png')];
     mockImageTagsTable(ddbMock, mockImages);
 
-    const event: Partial<APIGatewayProxyEvent> = {};
+    const event: Partial<APIGatewayProxyEvent> = {
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
+    };
     const result = await handler(event as APIGatewayProxyEvent);
 
     expect(result.statusCode).toBe(200);
@@ -33,6 +35,7 @@ describe('get-images handler', () => {
       queryStringParameters: {
         pageSize: '5',
       },
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
     };
     const result = await handler(event as APIGatewayProxyEvent);
 
@@ -50,6 +53,7 @@ describe('get-images handler', () => {
         pageSize: '5',
         nextPageToken: encodeNextPageToken('05.jpg'),
       },
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
     };
     const result = await handler(event as APIGatewayProxyEvent);
 
@@ -76,6 +80,7 @@ describe('get-images handler', () => {
       multiValueQueryStringParameters: {
         tag: ['evens', 'multiplesOfThree'],
       },
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
     };
     const result = await handler(event as APIGatewayProxyEvent);
 
@@ -101,6 +106,7 @@ describe('get-images handler', () => {
       multiValueQueryStringParameters: {
         tag: ['sunset', 'beach'],
       },
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
     };
 
     const result = await handler(event as APIGatewayProxyEvent);
@@ -120,6 +126,7 @@ describe('get-images handler', () => {
       multiValueQueryStringParameters: {
         tag: ['sunset', 'mountain'],
       },
+      requestContext: {} as APIGatewayProxyEvent['requestContext'],
     };
 
     const result = await handler(event as APIGatewayProxyEvent);

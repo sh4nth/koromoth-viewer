@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import exifr from "exifr";
 import { BsPencil, BsCheck, BsX, BsSearch } from "react-icons/bs";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+import { apiFetch } from "../utils/api";
 
 interface ExifData {
   Make?: string;
@@ -36,24 +35,24 @@ const ImageDetail = () => {
     }
   }, [isEditing]);
 
-  const fetchTags = async () => {
-    if (!imageKey) return;
-    const tagsResponse = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`);
-    if (!tagsResponse.ok) {
-      throw new Error("Failed to fetch tags");
-    }
-    const tagsData = await tagsResponse.json();
-    setTags(tagsData.tags || []);
-  };
-
   useEffect(() => {
+    const fetchTags = async () => {
+      if (!imageKey) return;
+      const tagsResponse = await apiFetch(`/image/${imageKey}/tags`);
+      if (!tagsResponse.ok) {
+        throw new Error("Failed to fetch tags");
+      }
+      const tagsData = await tagsResponse.json();
+      setTags(tagsData.tags || []);
+    };
+
     if (!imageKey) return;
 
     const fetchImageDetails = async () => {
       try {
         setError(null);
         // 1. Fetch the presigned URL for the image
-        const urlResponse = await fetch(`${API_BASE_URL}/image/${imageKey}`);
+        const urlResponse = await apiFetch(`/image/${imageKey}`);
         if (!urlResponse.ok) {
           throw new Error("Failed to fetch image URL");
         }
@@ -98,7 +97,7 @@ const ImageDetail = () => {
     try {
       // Delete tags
       if (tagsToDeleteSet.size > 0) {
-        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+        const res = await apiFetch(`/image/${imageKey}/tags`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags: Array.from(tagsToDeleteSet) }),
@@ -108,7 +107,7 @@ const ImageDetail = () => {
 
       // Add tags
       if (tagsToAddSet.size > 0) {
-        const res = await fetch(`${API_BASE_URL}/image/${imageKey}/tags`, {
+        const res = await apiFetch(`/image/${imageKey}/tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags: Array.from(tagsToAddSet) }),
@@ -121,7 +120,9 @@ const ImageDetail = () => {
       setTagsToAdd(new Set());
       setTagsToDelete(new Set());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -256,8 +257,8 @@ const ImageDetail = () => {
                       tagsToDelete.has(tag)
                         ? "bg-danger text-decoration-line-through"
                         : tagsToAdd.has(tag)
-                        ? "bg-success"
-                        : "bg-secondary"
+                          ? "bg-success"
+                          : "bg-secondary"
                     }`}
                     onClick={() => handleExistingTagClick(tag)}
                     style={{ cursor: "pointer" }}
