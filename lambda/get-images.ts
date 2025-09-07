@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ApiResponse } from './utils/response.js';
+import { getUserClaims } from './utils/auth.js';
 
 const ddbDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -22,13 +23,11 @@ interface ImageKeysResult {
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
+  console.log("Received event:", JSON.stringify(event, null, 2));
   try {
-    const claims = event.requestContext.authorizer?.claims;
-    const userId = claims?.sub;
-    const userEmail = claims?.email;
-
-    if (userId) {
-      console.log(`Request from authenticated user: ${userEmail} (${userId})`);
+    const claims = await getUserClaims(event);
+    if (claims) {
+      console.log(`Request from authenticated user: ${claims.email} (${claims.sub})`);
     } else {
       console.log('Request from a guest user.');
     }
@@ -47,6 +46,7 @@ export const handler = async (
     return ApiResponse.serverError(error);
   }
 };
+
 
 function getPageSize(pageSizeQueryParam: string | undefined) {
   if (!pageSizeQueryParam) {

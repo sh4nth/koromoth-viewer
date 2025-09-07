@@ -121,6 +121,10 @@ class KoromothViewerCdkPyStack(Stack):
             "timeout": Duration.seconds(30),
         }
 
+        auth_environment = {
+            "USER_POOL_ID": user_pool.user_pool_id,
+        }
+
         # --- Lambda Functions ---
         sharp_layer = lambda_.LayerVersion(
             self,
@@ -159,7 +163,10 @@ class KoromothViewerCdkPyStack(Stack):
             self,
             "ServeImageLambda",
             entry="lambda/get-image.ts",
-            environment={"BUCKET_NAME": existing_bucket_name_param.value_as_string},
+            environment={
+                **auth_environment,
+                "BUCKET_NAME": existing_bucket_name_param.value_as_string,
+            },
             **common_nodejs_props,
         )
         images_bucket.grant_read(serve_image_lambda)
@@ -169,6 +176,7 @@ class KoromothViewerCdkPyStack(Stack):
             "GetImagesLambda",
             entry="lambda/get-images.ts",
             environment={
+                **auth_environment,
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
@@ -182,6 +190,7 @@ class KoromothViewerCdkPyStack(Stack):
             "AddTagsLambda",
             entry="lambda/add-tags.ts",
             environment={
+                **auth_environment,
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
@@ -194,7 +203,10 @@ class KoromothViewerCdkPyStack(Stack):
             self,
             "GetTagsLambda",
             entry="lambda/get-tags.ts",
-            environment={"IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name},
+            environment={
+                **auth_environment,
+                "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
+            },
             **common_nodejs_props,
         )
         image_tags_table.grant_read_data(get_tags_lambda)
@@ -204,6 +216,7 @@ class KoromothViewerCdkPyStack(Stack):
             "DeleteTagsLambda",
             entry="lambda/delete-tags.ts",
             environment={
+                **auth_environment,
                 "IMAGE_TAGS_TABLE_NAME": image_tags_table.table_name,
                 "TAG_IMAGES_TABLE_NAME": tag_images_table.table_name,
             },
@@ -211,13 +224,6 @@ class KoromothViewerCdkPyStack(Stack):
         )
         image_tags_table.grant_write_data(delete_tags_lambda)
         tag_images_table.grant_write_data(delete_tags_lambda)
-
-        authorizer = apigw.CognitoUserPoolsAuthorizer(
-            self,
-            "KoromothCognitoAuthorizer",
-            cognito_user_pools=[user_pool],
-            identity_source=apigw.IdentitySource.header("Authorization"),
-        )
 
         api = apigw.RestApi(
             self,
@@ -227,10 +233,6 @@ class KoromothViewerCdkPyStack(Stack):
             default_cors_preflight_options=apigw.CorsOptions(
                 allow_origins=["http://localhost:5173"],
                 allow_methods=apigw.Cors.ALL_METHODS,
-            ),
-            default_method_options=apigw.MethodOptions(
-                authorization_type=apigw.AuthorizationType.COGNITO,
-                authorizer=authorizer,
             ),
         )
 
