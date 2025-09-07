@@ -283,21 +283,20 @@ class KoromothViewerCdkPyStack(Stack):
                 ],
             )
 
-            # Create a Cache Policy to include ALL query strings in the cache key
-            api_cache_policy = cloudfront.CachePolicy(self, "MyAPICachePolicy",
-                cache_policy_name="AllQueryStrings-CachePolicy",
-                comment="Cache key includes all query strings",
+            # Create a Cache Policy for the API Gateway that forwards the Authorization header
+            api_cache_policy = cloudfront.CachePolicy(
+                self,
+                "ApiCachePolicy",
+                cache_policy_name="KoromothApiCachePolicy",
+                comment="Policy to forward Authorization header and disable caching for API",
                 query_string_behavior=cloudfront.CacheQueryStringBehavior.all(),
-                # lambdas don't depend on headers and cookies for now
-                header_behavior=cloudfront.CacheHeaderBehavior.none(),
+                header_behavior=cloudfront.CacheHeaderBehavior.allow_list(
+                    "Authorization"
+                ),
                 cookie_behavior=cloudfront.CacheCookieBehavior.none(),
-                enable_accept_encoding_gzip=True,
-                enable_accept_encoding_brotli=True,
-                # Set TTLs as per your requirements.
-                # Example: Respect origin Cache-Control headers, with a fallback.
-                default_ttl=Duration.minutes(5), # Fallback if no Cache-Control
-                min_ttl=Duration.seconds(0),    # Allow origin to specify 0 for no cache
-                max_ttl=Duration.days(1),       # Upper limit on caching
+                default_ttl=Duration.seconds(0),  # Disable caching for API calls
+                min_ttl=Duration.seconds(0),
+                max_ttl=Duration.seconds(1),
             )
 
             # Add a new behavior for the API Gateway
