@@ -1,10 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ImageList from "./components/ImageList";
 import ImageDetail from "./components/ImageDetail";
-import { withAuthenticator } from "@aws-amplify/ui-react";
+import {
+  withAuthenticator,
+  WithAuthenticatorProps,
+} from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 
-function App({ signOut, user }) {
+function App({ signOut, user }: WithAuthenticatorProps) {
   return (
     <Router>
       <div className="container mt-4">

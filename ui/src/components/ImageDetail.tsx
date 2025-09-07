@@ -35,17 +35,17 @@ const ImageDetail = () => {
     }
   }, [isEditing]);
 
-  const fetchTags = async () => {
-    if (!imageKey) return;
-    const tagsResponse = await apiFetch(`/image/${imageKey}/tags`);
-    if (!tagsResponse.ok) {
-      throw new Error("Failed to fetch tags");
-    }
-    const tagsData = await tagsResponse.json();
-    setTags(tagsData.tags || []);
-  };
-
   useEffect(() => {
+    const fetchTags = async () => {
+      if (!imageKey) return;
+      const tagsResponse = await apiFetch(`/image/${imageKey}/tags`);
+      if (!tagsResponse.ok) {
+        throw new Error("Failed to fetch tags");
+      }
+      const tagsData = await tagsResponse.json();
+      setTags(tagsData.tags || []);
+    };
+
     if (!imageKey) return;
 
     const fetchImageDetails = async () => {
@@ -120,7 +120,9 @@ const ImageDetail = () => {
       setTagsToAdd(new Set());
       setTagsToDelete(new Set());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -255,8 +257,8 @@ const ImageDetail = () => {
                       tagsToDelete.has(tag)
                         ? "bg-danger text-decoration-line-through"
                         : tagsToAdd.has(tag)
-                        ? "bg-success"
-                        : "bg-secondary"
+                          ? "bg-success"
+                          : "bg-secondary"
                     }`}
                     onClick={() => handleExistingTagClick(tag)}
                     style={{ cursor: "pointer" }}
