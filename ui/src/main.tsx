@@ -12,13 +12,6 @@ Amplify.configure({
       userPoolClientId: import.meta.env.VITE_USER_POOL_CLIENT_ID,
     },
   },
-  API: {
-    REST: {
-      "koromoth-api": {
-        endpoint: import.meta.env.VITE_API_URL,
-      },
-    },
-  },
 });
 
 createRoot(document.getElementById("root")!).render(
